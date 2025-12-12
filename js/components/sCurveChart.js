@@ -1,10 +1,15 @@
 let sCurveInstance = null;
 
 export function renderSCurve(labels, plannedData, actualData, today) {
+    // 檢查點：打開 F12 Console 若看到這行，代表檔案已更新
+    console.log("✨ S-Curve 圖表程式載入成功 (v3.0 修復版)");
+
     const ctx = document.getElementById('sCurveChart').getContext('2d');
+    
     if (sCurveInstance) {
         sCurveInstance.destroy();
     }
+    
     sCurveInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -35,8 +40,28 @@ export function renderSCurve(labels, plannedData, actualData, today) {
             responsive: true,
             maintainAspectRatio: false,
             scales: { 
-                x: { type: 'time', time: { unit: 'month' } }, 
-                y: { min: 0, max: 100, title: { display: true, text: '累積進度 (%)' } }
+                x: { 
+                    type: 'time', 
+                    time: { 
+                        unit: 'month',
+                        displayFormats: {
+                            month: 'yy/MM'
+                        }
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        autoSkip: true,
+                        autoSkipPadding: 20
+                    },
+                    grid: {
+                        display: false
+                    }
+                }, 
+                y: { 
+                    min: 0, 
+                    max: 100, 
+                    title: { display: true, text: '累積進度 (%)' } 
+                }
             },
             plugins: {
                 tooltip: {
@@ -61,14 +86,20 @@ export function renderSCurve(labels, plannedData, actualData, today) {
                             type: 'line',
                             scaleID: 'x',
                             value: today.valueOf(),
-                            borderColor: 'red',
-                            borderWidth: 1,
+                            // ★★★ 修正重點：紅虛線 + 正確的標籤語法 ★★★
+                            borderColor: '#e74c3c', // 漂亮的紅色
+                            borderWidth: 2,
+                            borderDash: [5, 5],     // 虛線設定
                             label: {
-                                content: ['今日', today.toLocaleDateString()],
-                                enabled: true,
-                                position: 'start',
-                                backgroundColor: 'rgba(255, 0, 0, 0.8)',
-                                font: { size: 10 }
+                                content: '今日',
+                                display: true,      // 3.x 版必須用 display，不能用 enabled
+                                position: 'start',  // 標籤顯示在上方
+                                backgroundColor: '#e74c3c',
+                                color: 'white',
+                                font: { size: 10 },
+                                padding: 4,
+                                borderRadius: 4,
+                                yAdjust: 0 
                             }
                         }
                     }
