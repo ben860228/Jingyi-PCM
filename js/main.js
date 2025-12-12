@@ -6,13 +6,12 @@ import { renderSCurve } from './components/sCurveChart.js';
 const TASKS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=0&single=true&output=csv";
 const PROJECT_INFO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=1735843667&single=true&output=csv";
 
-
-// 設定今日為使用者系統時間
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('currentDate').textContent = "今日: " + today.toLocaleDateString();
+    const elDate = document.getElementById('currentDate');
+    if(elDate) elDate.textContent = "今日: " + today.toLocaleDateString();
     
     const btnRefresh = document.querySelector('button[onclick*="loadFromGoogle"]');
     if(btnRefresh) { btnRefresh.onclick = null; btnRefresh.addEventListener('click', loadFromGoogle); }
@@ -23,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if(TASKS_CSV_URL && TASKS_CSV_URL.includes("http")) {
         loadFromGoogle();
     } else {
-        document.getElementById('statusMsg').textContent = "⚠️ 請先設定 CSV 連結";
+        const msg = document.getElementById('statusMsg');
+        if(msg) msg.textContent = "⚠️ 請先設定 CSV 連結";
     }
 
-    // 初始化提示框元素 (如果 index.html 沒寫，這裡補救)
     initTooltipOverlay();
 });
 
@@ -36,10 +35,20 @@ window.toggleManual = function() {
 }
 window.parseManual = function() { processData(document.getElementById('csvInput').value, null); }
 
+function getLastFriday(date) {
+    const d = new Date(date);
+    const day = d.getDay(); 
+    const diff = (day - 5 + 7) % 7;
+    d.setDate(d.getDate() - diff);
+    return d;
+}
+
 window.loadFromGoogle = async function() {
     const msg = document.getElementById('statusMsg');
-    msg.textContent = "⏳ 更新中...";
-    msg.style.color = "#3498db";
+    if(msg) {
+        msg.textContent = "⏳ 更新中...";
+        msg.style.color = "#3498db";
+    }
     const cacheBuster = "&t=" + new Date().getTime();
 
     try {
@@ -62,14 +71,18 @@ window.loadFromGoogle = async function() {
             }
         }
 
-        msg.textContent = "✅ 更新成功";
-        msg.style.color = "#2E7D32"; // 改為品牌綠
+        if(msg) {
+            msg.textContent = "✅ 更新成功";
+            msg.style.color = "#2E7D32"; 
+        }
         
         processData(taskCsvText, infoCsvText);
 
     } catch (err) {
-        msg.textContent = "❌ " + err.message;
-        msg.style.color = "red";
+        if(msg) {
+            msg.textContent = "❌ " + err.message;
+            msg.style.color = "red";
+        }
         console.error(err);
     }
 }
@@ -83,7 +96,6 @@ function processData(taskCsv, infoCsv) {
         return;
     }
 
-    // --- 1. 解析專案資訊 ---
     let projectInfo = {
         code: "專案代號", name: "專案名稱", government: "--", location: "--", 
         designer: "--", contractor: "--", boss: "--", sponsor: "--"  
@@ -107,25 +119,53 @@ function processData(taskCsv, infoCsv) {
         });
     }
 
-    document.getElementById('ui-project-name').textContent = projectInfo.name;
-    document.getElementById('ui-location').textContent = projectInfo.location;
-    document.getElementById('ui-government').textContent = projectInfo.government;
-    document.getElementById('ui-designer').textContent = projectInfo.designer;
-    document.getElementById('ui-contractor').textContent = projectInfo.contractor;
-    document.getElementById('ui-boss').textContent = projectInfo.boss;
-    document.getElementById('ui-sponsor').textContent = projectInfo.sponsor;
-    
-    document.getElementById('sCurveHeader').textContent = `${projectInfo.code} S-Curve`;
-    document.getElementById('ganttHeader').textContent = `${projectInfo.code} 專案整體進度甘特圖`;
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
+    setTxt('ui-project-name', projectInfo.name);
+    setTxt('ui-location', projectInfo.location);
+    setTxt('ui-government', projectInfo.government);
+    setTxt('ui-designer', projectInfo.designer);
+    setTxt('ui-contractor', projectInfo.contractor);
+    setTxt('ui-boss', projectInfo.boss);
+    setTxt('ui-sponsor', projectInfo.sponsor);
+    setTxt('sCurveHeader', `${projectInfo.code} S-Curve`);
+    setTxt('ganttHeader', `${projectInfo.code} 專案整體進度甘特圖`);
 
 
-    // --- 2. S-Curve ---
+    // --- 2. S-Curve 與日期計算 ---
     let minDateOverall = new Date("2099-12-31");
     const dateColumnRegex = /^(\d{4}[\/\-](0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12][0-9]|3[01]))$/;
     const allKeys = Object.keys(taskData[0]);
     const historicalDateKeys = allKeys.filter(key => dateColumnRegex.test(key)).sort((a, b) => parseDate(a) - parseDate(b));
 
+    // --- 日期判斷 ---
+    const plannedDateObj = getLastFriday(today);
+    const pStr = `${plannedDateObj.getFullYear()}/${(plannedDateObj.getMonth()+1).toString().padStart(2, '0')}/${plannedDateObj.getDate().toString().padStart(2, '0')}`;
+    setTxt('plannedDateStr', `${pStr} 已更新`);
+    
+    // 找出最後一個有資料的日期 (cutoff)
+    let lastFilledDateStr = "--/--/--";
+    historicalDateKeys.forEach(dateKey => {
+        const hasData = taskData.some(row => {
+            const val = row[dateKey];
+            return val !== undefined && val !== null && val.trim() !== "";
+        });
+        if (hasData) {
+            lastFilledDateStr = dateKey;
+        }
+    });
+    setTxt('actualDateStr', `${lastFilledDateStr} 已回報`);
+
+    const actualCutoffDate = parseDate(lastFilledDateStr);
+
+
+    // --- S-Curve 計算 ---
     const sLabels = []; const sPlanned = []; const sActual = [];
+    let taskProgressState = {}; 
+    
+    // ★★★ 建立資料對照表 (用於同步圖卡數值) ★★★
+    // Key: 日期字串 (如 2025/12/12), Value: { p: 9.04, a: 6.04 }
+    let sCurveDataMap = {};
+
     if (historicalDateKeys.length > 0) {
         const firstDate = parseDate(historicalDateKeys[0]);
         if (minDateOverall > firstDate) minDateOverall = firstDate;
@@ -135,7 +175,9 @@ function processData(taskCsv, infoCsv) {
         historicalDateKeys.forEach(dateKey => {
             const currentDate = parseDate(dateKey);
             sLabels.push(currentDate.valueOf());
-            let cumulativePlanned = 0; let dailyActualTotal = 0;
+            
+            // 1. 預定進度
+            let cumulativePlanned = 0; 
             taskData.forEach(row => {
                 if (!row['任務名稱']) return;
                 const weight = parsePercent(row['全案權重 (%)']);
@@ -149,17 +191,39 @@ function processData(taskCsv, infoCsv) {
                         if(totalDays>0) cumulativePlanned += weight * (passedDays / totalDays);
                     }
                 }
-                dailyActualTotal += parsePercent(row[dateKey]);
             });
             sPlanned.push(cumulativePlanned.toFixed(2));
-            if (dailyActualTotal > 0 || currentDate <= today) {
-                const cumulativeActual = taskData.reduce((sum, row) => sum + (parsePercent(row[dateKey]) / 100 * parsePercent(row['全案權重 (%)'])), 0);
-                sActual.push(cumulativeActual.toFixed(2));
-            } else { sActual.push(null); }
+
+            // 2. 實際進度
+            let dailyTotalActual = null;
+            if (actualCutoffDate && currentDate <= actualCutoffDate) {
+                dailyTotalActual = 0;
+                taskData.forEach((row, index) => {
+                    const weight = parsePercent(row['全案權重 (%)']);
+                    const rawVal = row[dateKey];
+                    if (rawVal !== undefined && rawVal !== null && rawVal.trim() !== "") {
+                        taskProgressState[index] = parsePercent(rawVal);
+                    }
+                    const currentTaskProgress = taskProgressState[index] || 0;
+                    dailyTotalActual += (currentTaskProgress / 100 * weight);
+                });
+                sActual.push(dailyTotalActual.toFixed(2));
+            } else { 
+                sActual.push(null); 
+            }
+            
+            // ★★★ 記錄這一天算出來的數值 ★★★
+            sCurveDataMap[dateKey] = {
+                planned: cumulativePlanned.toFixed(2),
+                actual: dailyTotalActual !== null ? dailyTotalActual.toFixed(2) : null
+            };
         });
     }
 
     // --- 3. 數據與任務清單 ---
+    // (這裡保留原有的 taskData 迴圈，用於產生甘特圖和列表，但不依賴其計算總分來顯示圖卡)
+    // 為了安全起見，我們還是算一下，當作「沒有對應到日期」時的備案
+    
     let totalPlannedToday = 0;
     let totalActualToday = 0;
     
@@ -169,7 +233,7 @@ function processData(taskCsv, infoCsv) {
     const allUpcomingTasks = [];
     const fmtDate = (d) => d ? d.toLocaleDateString('zh-TW') : '???';
 
-    taskData.forEach(row => {
+    taskData.forEach((row, index) => {
         const taskName = row['任務名稱'];
         if (!taskName) return; 
 
@@ -182,6 +246,7 @@ function processData(taskCsv, infoCsv) {
         const actStart = parseDate(row['實際開始時間']);
         const actEnd = parseDate(row['實際完成時間']);
 
+        // 預定進度備案計算
         if (planStart && planEnd) {
             if (today >= planEnd) totalPlannedToday += weight;
             else if (today > planStart) {
@@ -190,8 +255,12 @@ function processData(taskCsv, infoCsv) {
                 totalPlannedToday += weight * (passedDays / totalDays);
             }
         }
-        totalActualToday += parsePercent(row['貢獻度 (%)']);
+        
+        // 實際進度備案計算
+        const currentTaskProgress = taskProgressState[index] || 0;
+        totalActualToday += (currentTaskProgress / 100 * weight);
 
+        // 甘特圖資料準備
         ganttLabels.push(taskName);
         ganttPlannedData.push(planStart && planEnd ? [planStart.valueOf(), planEnd.valueOf()] : null);
 
@@ -227,7 +296,6 @@ function processData(taskCsv, infoCsv) {
             else aStr = `${fmtDate(actStart)} ~ 進行中`;
         }
         
-        // ★★★ 準備 Tooltip 文字 (無 Emoji) ★★★
         const tipText = `【${taskName}】\n預定：${pStr}\n實際：${aStr}`;
 
         const tObj = { name: taskName, delayed: isDelayed, cat: cat, tip: tipText };
@@ -239,19 +307,43 @@ function processData(taskCsv, infoCsv) {
         }
     });
 
-    document.getElementById('plannedVal').textContent = totalPlannedToday.toFixed(2) + '%';
-    document.getElementById('actualVal').textContent = totalActualToday.toFixed(2) + '%';
-    const variance = totalActualToday - totalPlannedToday;
+    // ★★★ 最終數值決定 (強制同步邏輯) ★★★
+    
+    // 1. 預定進度
+    let finalPlannedVal = totalPlannedToday.toFixed(2);
+    // 檢查：如果「預定日期(pStr)」在 S-Curve 裡有資料，直接用 S-Curve 的值
+    // pStr 格式是 yyyy/mm/dd (補零)，必須確保 key 格式一致。csv通常也是補零的。
+    if (sCurveDataMap[pStr]) {
+        finalPlannedVal = sCurveDataMap[pStr].planned;
+    }
+    setTxt('plannedVal', finalPlannedVal + '%');
+
+    // 2. 實際進度
+    let finalActualVal = totalActualToday.toFixed(2);
+    // 檢查：如果「實際回報日(lastFilledDateStr)」在 S-Curve 裡有資料
+    if (sCurveDataMap[lastFilledDateStr]) {
+        // 且該值不是 null
+        if (sCurveDataMap[lastFilledDateStr].actual !== null) {
+            finalActualVal = sCurveDataMap[lastFilledDateStr].actual;
+        }
+    }
+    setTxt('actualVal', finalActualVal + '%');
+    
+    
+    // 3. 差異計算
+    const variance = parseFloat(finalActualVal) - parseFloat(finalPlannedVal);
     const elVar = document.getElementById('varianceVal');
     const elBadge = document.getElementById('varianceText');
-    elVar.textContent = (variance > 0 ? "+" : "") + variance.toFixed(2) + '%';
+    if(elVar) elVar.textContent = (variance > 0 ? "+" : "") + variance.toFixed(2) + '%';
     
-    if (variance < -5) { 
-        elVar.className = "s-value text-red"; elBadge.className = "badge bg-red"; elBadge.textContent = "落後"; 
-    } else if (variance >= 0) { 
-        elVar.className = "s-value text-green"; elBadge.className = "badge bg-green"; elBadge.textContent = "超前"; 
-    } else { 
-        elVar.className = "s-value"; elBadge.className = "badge"; elBadge.textContent = "可控"; 
+    if (elVar && elBadge) {
+        if (variance < -5) { 
+            elVar.className = "s-value text-red"; elBadge.className = "badge bg-red"; elBadge.textContent = "落後"; 
+        } else if (variance >= 0) { 
+            elVar.className = "s-value text-green"; elBadge.className = "badge bg-green"; elBadge.textContent = "超前"; 
+        } else { 
+            elVar.className = "s-value"; elBadge.className = "badge"; elBadge.textContent = "可控"; 
+        }
     }
 
     categories.forEach(cat => {
@@ -265,7 +357,6 @@ function processData(taskCsv, infoCsv) {
     if(sLabels.length > 0) renderSCurve(sLabels, sPlanned, sActual, today);
     renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles);
     
-    // ★★★ 綁定任務卡片事件 ★★★
     attachTaskCardEvents();
 }
 
@@ -290,16 +381,12 @@ function renderTaskList(elementId, tasks) {
         }
         html += t.name;
         
-        // ★★★ 將提示文字存入 data-tooltip (移除 title 屬性) ★★★
         div.setAttribute('data-tooltip', t.tip);
-        // div.title = t.tip; // 移除這行，避免瀏覽器原生提示
-        
         div.innerHTML = html;
         el.appendChild(div);
     });
 }
 
-// 建立黑色提示框 (如果沒有的話)
 function initTooltipOverlay() {
     if (!document.getElementById('mobile-tooltip-overlay')) {
         const overlay = document.createElement('div');
@@ -308,7 +395,6 @@ function initTooltipOverlay() {
     }
 }
 
-// ★★★ 綁定任務卡片事件 (電腦 Hover / 手機 Click) ★★★
 function attachTaskCardEvents() {
     const overlay = document.getElementById('mobile-tooltip-overlay');
     const items = document.querySelectorAll('.task-item');
@@ -317,48 +403,34 @@ function attachTaskCardEvents() {
     if (!overlay) return;
 
     items.forEach(item => {
-        // --- 1. 手機版：點擊顯示 ---
         item.addEventListener('click', (e) => {
-            // 判斷是否為手機 (寬度 < 900)
             if(window.innerWidth > 900) return; 
-
             const text = item.getAttribute('data-tooltip');
             if(!text) return;
-
             overlay.textContent = text;
             overlay.classList.add('show');
-            
-            // 重置樣式為置底 Snackbar
             overlay.style.top = ''; 
             overlay.style.left = ''; 
             overlay.style.bottom = '20px'; 
             overlay.style.transform = 'translateX(-50%)'; 
-
             if(timer) clearTimeout(timer);
-            timer = setTimeout(() => {
-                overlay.classList.remove('show');
-            }, 3000);
+            timer = setTimeout(() => { overlay.classList.remove('show'); }, 3000);
         });
 
-        // --- 2. 電腦版：滑鼠移入顯示 ---
         item.addEventListener('mouseenter', (e) => {
-            if(window.innerWidth <= 900) return; // 手機不觸發
-
+            if(window.innerWidth <= 900) return; 
             const text = item.getAttribute('data-tooltip');
             if(!text) return;
-
             overlay.textContent = text;
             overlay.classList.add('show');
             updateOverlayPosition(e, overlay);
         });
 
-        // --- 3. 電腦版：滑鼠移動跟隨 ---
         item.addEventListener('mousemove', (e) => {
             if(window.innerWidth <= 900) return;
             updateOverlayPosition(e, overlay);
         });
 
-        // --- 4. 電腦版：滑鼠移出隱藏 ---
         item.addEventListener('mouseleave', () => {
             if(window.innerWidth <= 900) return;
             overlay.classList.remove('show');
@@ -366,7 +438,6 @@ function attachTaskCardEvents() {
     });
 }
 
-// 輔助：更新提示框位置 (電腦版)
 function updateOverlayPosition(e, overlay) {
     overlay.style.bottom = 'auto';
     overlay.style.left = (e.clientX + 15) + 'px';
