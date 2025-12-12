@@ -41,20 +41,41 @@ body {
     overflow: hidden; 
 }
 
-/* 圖片樣式：加入強制約束 */
+/* 圖片樣式：加入質感特效 */
 .company-logo {
-    /* 1. 寬度不超過父容器 (160px) */
+    /* 1. 尺寸安全鎖 (維持不變) */
     max-width: 100%; 
-    
-    /* 2. ★關鍵★：高度也不要超過 120px (避免圖片太長把版面撐高) */
     max-height: 120px; 
-    
-    /* 3. 寬度設為 auto，讓它依照高度等比例縮放 */
     width: auto; 
     height: auto;
-    
     object-fit: contain; 
     display: block;
+
+    /* ★★★ 2. 質感提升特效 ★★★ */
+    
+    /* 圓潤的邊角 */
+    border-radius: 12px; 
+    
+    /* 精緻的白邊 (像貼紙或徽章的感覺) */
+    border: 3px solid #ffffff; 
+    
+    /* 柔和的投影 (X軸偏移, Y軸偏移, 模糊半徑, 擴散, 顏色) */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    
+    /* 加入動畫過渡效果 (讓 hover 不會太突兀) */
+    transition: all 0.3s ease;
+}
+
+/* ★★★ 3. 滑鼠懸停互動效果 ★★★ */
+.company-logo:hover {
+    /* 輕微上浮 */
+    transform: translateY(-3px);
+    
+    /* 陰影加深，並帶有一點品牌綠色的光暈 */
+    box-shadow: 0 8px 20px rgba(46, 125, 50, 0.25);
+    
+    /* 游標變手型 (選填，如果您希望它看起來可點擊) */
+    cursor: pointer;
 }
 
 /* 核心資訊 */
