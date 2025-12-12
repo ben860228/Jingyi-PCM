@@ -78,8 +78,7 @@
             transition: transform 0.5s ease-out;
             z-index: 10;
             display: flex; justify-content: center; align-items: center;
-            
-            /* 允許溢出，防止切字 */
+            /* 允許溢出，避免切字 */
             overflow: visible; 
         }
 
@@ -145,7 +144,7 @@
             border-radius: 4px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
             text-decoration: none;
-            white-space: nowrap; /* 強制不換行 */
+            white-space: nowrap;
             border: 2px solid #fff;
             pointer-events: auto; 
             transition: all 0.3s;
@@ -180,7 +179,7 @@
             border-radius: 4px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
             text-decoration: none;
-            white-space: nowrap; /* 強制不換行 */
+            white-space: nowrap;
             border: 2px solid #fff;
             pointer-events: auto; 
             transition: all 0.3s;
@@ -234,7 +233,7 @@
         }
 
         /* =========================================
-           ★★★ 工程模式 UI ★★★ 
+           ★★★ 工程模式 UI (隱形板手) ★★★ 
            ========================================= */
         #calibration-toggle {
             position: fixed;
@@ -312,24 +311,31 @@
             .portal-logo-img { height: 40px; }
             .portal-title { font-size: 0.9em; margin-top: 3px; }
             
-            /* ★★★ 修正 1：地圖整體往左移，騰出右邊空間 ★★★ */
+            /* ★★★ 終極縮放修正 ★★★ */
             .map-wrapper {
-                width: 85vw; 
+                /* 1. 恢復 480px 固定寬度 (確保內部相對位置不變) */
+                width: 480px; 
+                
+                /* 2. 絕對置中 */
                 top: 55%;
-                left: 40%; /* 原本是 50%，改成 40% */
-                transform: translate(-50%, -50%) perspective(800px) rotateX(40deg) rotateZ(15deg);
+                left: 50%; 
+                
+                /* 3. 使用 scale(0.65) 整體縮小，適應手機寬度 */
+                /* 480px * 0.65 = 312px，這樣絕對塞得進手機 (通常 360px+) */
+                transform: translate(-50%, -50%) perspective(800px) rotateX(40deg) rotateZ(15deg) scale(0.65);
             }
+            
             .map-wrapper:hover {
-                transform: translate(-50%, -50%) perspective(800px) rotateX(40deg) rotateZ(15deg);
+                transform: translate(-50%, -50%) perspective(800px) rotateX(40deg) rotateZ(15deg) scale(0.65);
             }
             
+            /* 線條跟標籤可以維持原樣，因為整體都被 scale 縮小了 */
+            /* 但為了視覺平衡，我們還是可以微調一下距離 */
             .pin-connector-L { width: 80px; height: 40px; }
-            .pin-label { right: 80px; bottom: 40px; font-size: 1em; padding: 6px 12px; }
+            .pin-label { right: 80px; bottom: 40px; font-size: 1.1em; padding: 6px 12px; }
             
-            /* ★★★ 修正 2：縮短玉里線條，避免撞到螢幕邊緣 ★★★ */
-            /* 從 50px 縮到 20px，讓標籤更靠近地圖 */
-            .pin-connector-L-right { width: 20px; height: 40px; }
-            .pin-label-right { left: 18px; top: 40px; font-size: 1em; padding: 6px 12px; }
+            .pin-connector-L-right { width: 50px; height: 40px; }
+            .pin-label-right { left: 48px; top: 40px; font-size: 1.1em; padding: 6px 12px; }
 
             .project-pin-anchor { transform: rotateZ(-15deg) rotateX(-40deg) translateZ(50px); }
         }
