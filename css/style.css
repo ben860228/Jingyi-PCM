@@ -4,6 +4,8 @@ body {
     margin: 0; 
     padding: 20px; 
     color: #333; 
+    /* 手機版防止左右晃動 */
+    overflow-x: hidden; 
 }
 .container { max-width: 1400px; margin: 0 auto; }
 
@@ -23,10 +25,10 @@ body {
     grid-template-columns: 160px 1fr 200px; 
     gap: 15px;
     margin-bottom: 20px;
-    align-items: flex-start; /* 改為 flex-start，避免被隔壁拉高 */
+    align-items: stretch; 
 }
 
-/* ★★★ LOGO 區塊修正 ★★★ */
+/* LOGO 區塊 */
 .logo-block {
     display: flex; 
     align-items: center; 
@@ -34,48 +36,19 @@ body {
     background: transparent;
     border: none;
     box-shadow: none;
+    align-self: flex-start;
     padding: 0;
-    
-    /* 雙重保險：限制區塊最大寬度，避免撐開 Grid */
-    max-width: 100%; 
-    overflow: hidden; 
+    /* 限制最大寬度，避免手機版過大 */
+    max-width: 100%;
 }
 
-/* 圖片樣式：加入質感特效 */
 .company-logo {
-    /* 1. 尺寸安全鎖 (維持不變) */
-    max-width: 100%; 
-    max-height: 120px; 
-    width: auto; 
-    height: auto;
+    width: 100%; 
+    height: auto; 
     object-fit: contain; 
     display: block;
-
-    /* ★★★ 2. 質感提升特效 ★★★ */
-    
-    /* 圓潤的邊角 */
-    border-radius: 12px; 
-    
-    /* 精緻的白邊 (像貼紙或徽章的感覺) */
-    border: 3px solid #ffffff; 
-    
-    /* 柔和的投影 (X軸偏移, Y軸偏移, 模糊半徑, 擴散, 顏色) */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
-    
-    /* 加入動畫過渡效果 (讓 hover 不會太突兀) */
-    transition: all 0.3s ease;
-}
-
-/* ★★★ 3. 滑鼠懸停互動效果 ★★★ */
-.company-logo:hover {
-    /* 輕微上浮 */
-    transform: translateY(-3px);
-    
-    /* 陰影加深，並帶有一點品牌綠色的光暈 */
-    box-shadow: 0 8px 20px rgba(46, 125, 50, 0.25);
-    
-    /* 游標變手型 (選填，如果您希望它看起來可點擊) */
-    cursor: pointer;
+    /* 增加一點最大高度限制，避免原圖過大 */
+    max-height: 120px;
 }
 
 /* 核心資訊 */
@@ -87,6 +60,7 @@ body {
 .info-header {
     display: flex; justify-content: space-between; align-items: flex-start;
     margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;
+    flex-wrap: wrap; /* 允許標題與日期換行 */
 }
 .info-header h1 { margin: 0 0 5px 0; font-size: 1.6em; color: #2c3e50; }
 .info-header .sub-title { font-size: 0.95em; color: #7f8c8d; letter-spacing: 1px; }
@@ -100,8 +74,9 @@ body {
     display: flex; align-items: center;
     margin-bottom: 15px;
     border: 1px solid #C5E1A5; 
+    flex-wrap: wrap; /* 手機版若太窄自動換行 */
 }
-.kp-item { display: flex; align-items: baseline; gap: 10px; }
+.kp-item { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
 .kp-label { font-size: 0.85em; color: #558B2F; font-weight: bold; }
 .kp-value { font-size: 1.1em; color: #1B5E20; font-weight: bold; }
 .kp-divider { width: 1px; height: 15px; background: #a5d6a7; margin: 0 25px; }
@@ -113,8 +88,8 @@ body {
     gap: 8px 40px; 
 }
 .gi-item { font-size: 0.95em; display: flex; align-items: baseline; border-bottom: 1px dashed #f0f0f0; padding-bottom: 3px; }
-.gi-label { color: #888; width: 70px; margin-right: 10px; text-align: justify; font-weight: bold; }
-.gi-item span:not(.gi-label) { color: #333; font-weight: 500; }
+.gi-label { color: #888; width: 70px; min-width: 70px; margin-right: 10px; text-align: justify; font-weight: bold; }
+.gi-item span:not(.gi-label) { color: #333; font-weight: 500; word-break: break-all; /* 防止長文字爆版 */ }
 
 /* 數據戰情 */
 .stats-block {
@@ -134,7 +109,6 @@ body {
 .s-value { font-size: 1.8em; font-weight: bold; color: #2c3e50; line-height: 1; }
 .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; background: #eee; font-size: 0.8em; margin-top: 5px; font-weight: bold; }
 
-/* 狀態色 */
 .text-red { color: #c0392b !important; }
 .text-green { color: #27ae60 !important; }
 .bg-red { background: #ffebee; color: #c0392b; }
@@ -149,16 +123,16 @@ body {
 }
 .task-panel { padding: 0; display: flex; flex-direction: column; }
 
-/* 標題區塊 */
 .panel-header-row {
     background-color: #fff; 
     padding: 15px 20px;
     border-bottom: 1px solid #eee;
     display: flex; justify-content: space-between; align-items: center;
     min-height: 35px;
+    flex-wrap: wrap; /* 允許標題換行 */
 }
 
-.title-group { display: flex; align-items: center; gap: 10px; }
+.title-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .panel-head { 
     margin: 0; 
@@ -168,13 +142,14 @@ body {
     border-left: 5px solid #2E7D32; 
     padding-left: 12px;
     line-height: 1.2;
+    white-space: nowrap; /* 標題不換行 */
 }
 
-.sub-note { font-size: 0.8em; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+.sub-note { font-size: 0.8em; padding: 2px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
 .sub-note { color: #e74c3c; background: #fff5f5; }
 .sub-note.blue { color: #3498db; background: #e3f2fd; }
 
-.category-legend { font-size: 0.85em; color: #666; display: flex; gap: 15px; }
+.category-legend { font-size: 0.85em; color: #666; display: flex; gap: 15px; margin-top: 5px; }
 .legend-pair { display: flex; align-items: center; gap: 4px; cursor: default; }
 .legend-dot { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
 .dot-admin { background-color: #f39c12; }
@@ -188,11 +163,9 @@ body {
     padding: 10px; 
     border-radius: 6px; 
     display: flex; flex-direction: column;
-    
-    /* ★★★ 高度設定 300px ★★★ */
     height: 300px;
-    
     border: 1px solid #eee;
+    min-width: 0; /* Flex子元素縮小關鍵 */
 }
 .col-title { 
     text-align: center; font-weight: bold; color: #7f8c8d; margin-bottom: 10px; 
@@ -204,10 +177,7 @@ body {
 .single-col-list { 
     background: #fcfcfc; padding: 10px; border-radius: 0 0 6px 6px; 
     flex: 1; 
-    
-    /* ★★★ 高度設定 300px ★★★ */
-    height: 300px;
-    
+    height: 300px; 
     overflow-y: auto; 
     margin: 15px; 
     border: 1px solid #eee;
@@ -222,8 +192,9 @@ body {
     line-height: 1.5;
     word-wrap: break-word; 
     transition: transform 0.1s;
+    cursor: pointer; /* 讓使用者知道可以點 */
 }
-.task-item:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.task-item:active { background-color: #f5f5f5; } /* 手機按下去的反應 */
 
 .cat-行政 { border-left-color: #f39c12; }
 .cat-設計 { border-left-color: #9b59b6; }
@@ -247,23 +218,113 @@ body {
 
 .chart-container { height: 400px; position: relative; }
 .gantt-container { height: 1000px; position: relative; }
-.gantt-legend { display: flex; justify-content: flex-end; gap: 15px; margin-bottom: 10px; font-size: 0.85em; color: #666; }
+.gantt-legend { display: flex; justify-content: flex-end; gap: 15px; margin-bottom: 10px; font-size: 0.85em; color: #666; flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; }
 .legend-color { width: 12px; height: 12px; margin-right: 5px; border-radius: 2px; }
 
-.footer-controls { text-align: right; margin-top: 10px; }
+.footer-controls { text-align: right; margin-top: 10px; margin-bottom: 40px; }
 .simple-btn { background: #2E7D32; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-.simple-btn:hover { background: #1B5E20; }
 .link-btn { background: none; border: none; color: #999; text-decoration: underline; cursor: pointer; }
 #manualSection { display: none; margin-top: 15px; }
 textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; }
 
-/* RWD */
+/* ★★★ 手機版浮動提示框 (模擬 Tooltip) ★★★ */
+#mobile-tooltip-overlay {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(44, 62, 80, 0.95);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    text-align: left;
+    max-width: 90%;
+    width: auto;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none; /* 預設不擋點擊 */
+    white-space: pre-line; /* 支援換行符號 */
+}
+#mobile-tooltip-overlay.show { opacity: 1; pointer-events: auto; }
+
+
+/* =========================================
+   ★★★ RWD 響應式設計 (針對手機優化) ★★★ 
+   ========================================= */
+
+/* 通用手機調整 (寬度 < 900px) */
 @media (max-width: 900px) {
-    .top-dashboard-wrapper { grid-template-columns: 1fr; }
-    .logo-block, .info-block, .stats-block { width: 100%; }
+    .container { padding: 10px; }
     
+    /* 上方區塊改為直式堆疊 */
+    .top-dashboard-wrapper { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 10px; 
+    }
+    
+    /* LOGO 置中 */
+    .logo-block { 
+        align-self: center; 
+        margin-bottom: 0;
+        max-width: 180px; 
+    }
+    
+    /* 資訊區塊優化：單欄顯示，防止爆版 */
+    .info-block { padding: 15px; }
+    .general-info-grid { 
+        grid-template-columns: 1fr; /* 強制單欄 */
+        gap: 10px; 
+    }
+    .kp-divider { display: none; } /* 隱藏分隔線 */
+    .key-people-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+    
+    /* 數據區塊：改為橫向排列 (3格並排)，節省垂直空間 */
+    .stats-block { 
+        flex-direction: row; 
+        justify-content: space-between; 
+        padding: 10px;
+    }
+    .stat-row { border-bottom: none; border-right: 1px solid #eee; }
+    .stat-row:last-child { border-right: none; }
+    .s-value { font-size: 1.4em; } /* 字稍微縮小 */
+
+    /* 任務區塊 */
     .task-grid { grid-template-columns: 1fr; }
-    .task-cols { flex-direction: column; height: auto; }
-    .t-col, .single-col-list { height: auto; max-height: 400px; margin-bottom: 10px; }
+    
+    /* 甘特圖文字縮小 */
+    .gantt-legend { justify-content: flex-start; }
+}
+
+/* ★★★ 特別針對「直式」手機 (Portrait) ★★★ */
+@media (max-width: 900px) and (orientation: portrait) {
+    /* 強制任務清單垂直排列 */
+    .task-cols { 
+        flex-direction: column; 
+        height: auto; /* 高度自動撐開 */
+    }
+    .t-col { 
+        height: auto; 
+        max-height: 300px; /* 設定最大高度並可捲動 */
+        margin-bottom: 10px;
+    }
+}
+
+/* ★★★ 特別針對「橫式」手機 (Landscape) ★★★ */
+@media (max-width: 900px) and (orientation: landscape) {
+    /* 讓任務清單保持左右並排 (3欄)，不要變成全螢幕寬的巨無霸 */
+    .task-cols { 
+        flex-direction: row; 
+        height: 250px; /* 橫式畫面矮，高度縮減 */
+    }
+    
+    /* 字體稍微縮小，避免擠壓 */
+    .task-item { font-size: 0.85em; padding: 6px; }
+    
+    /* 圖表區高度縮減，讓使用者容易看到全貌 */
+    .chart-container { height: 300px; }
+    
+    /* 隱藏非必要資訊以節省空間 */
+    .logo-block { display: none; } /* 橫式手機通常空間不足，隱藏LOGO */
 }
