@@ -23,25 +23,36 @@ body {
     grid-template-columns: 160px 1fr 200px; 
     gap: 15px;
     margin-bottom: 20px;
-    align-items: stretch; 
+    align-items: flex-start; /* 改為 flex-start，避免被隔壁拉高 */
 }
 
-/* ★ LOGO 區塊：透明、無框、自適應高度 ★ */
+/* ★★★ LOGO 區塊修正 ★★★ */
 .logo-block {
     display: flex; 
     align-items: center; 
     justify-content: center;
-    background: transparent; /* 透明背景 */
-    border: none; /* 無邊框 */
-    box-shadow: none; /* 無陰影 */
-    align-self: flex-start; /* 讓它依圖片高度自然呈現，不拉長 */
+    background: transparent;
+    border: none;
+    box-shadow: none;
     padding: 0;
+    
+    /* 雙重保險：限制區塊最大寬度，避免撐開 Grid */
+    max-width: 100%; 
+    overflow: hidden; 
 }
 
-/* 圖片樣式：填滿寬度，高度自動 */
+/* 圖片樣式：加入強制約束 */
 .company-logo {
-    width: 100%; 
-    height: auto; 
+    /* 1. 寬度不超過父容器 (160px) */
+    max-width: 100%; 
+    
+    /* 2. ★關鍵★：高度也不要超過 120px (避免圖片太長把版面撐高) */
+    max-height: 120px; 
+    
+    /* 3. 寬度設為 auto，讓它依照高度等比例縮放 */
+    width: auto; 
+    height: auto;
+    
     object-fit: contain; 
     display: block;
 }
