@@ -79,7 +79,7 @@
             z-index: 10;
             display: flex; justify-content: center; align-items: center;
             
-            /* ★★★ 關鍵修正：允許子元素溢出容器，防止標籤被切 ★★★ */
+            /* 允許溢出，防止切字 */
             overflow: visible; 
         }
 
@@ -145,7 +145,7 @@
             border-radius: 4px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
             text-decoration: none;
-            white-space: nowrap;
+            white-space: nowrap; /* 強制不換行 */
             border: 2px solid #fff;
             pointer-events: auto; 
             transition: all 0.3s;
@@ -180,7 +180,7 @@
             border-radius: 4px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
             text-decoration: none;
-            white-space: nowrap;
+            white-space: nowrap; /* 強制不換行 */
             border: 2px solid #fff;
             pointer-events: auto; 
             transition: all 0.3s;
@@ -234,7 +234,7 @@
         }
 
         /* =========================================
-           ★★★ 工程模式 UI (隱形板手) ★★★ 
+           ★★★ 工程模式 UI ★★★ 
            ========================================= */
         #calibration-toggle {
             position: fixed;
@@ -304,12 +304,19 @@
             transform: scale(1.5);
         }
 
+        /* =========================================
+           ★★★ 手機版專屬修正 (max-width: 768px) ★★★ 
+           ========================================= */
         @media (max-width: 768px) {
             .portal-header { height: 80px; }
             .portal-logo-img { height: 40px; }
             .portal-title { font-size: 0.9em; margin-top: 3px; }
+            
+            /* ★★★ 修正 1：地圖整體往左移，騰出右邊空間 ★★★ */
             .map-wrapper {
-                width: 85vw; top: 55%;
+                width: 85vw; 
+                top: 55%;
+                left: 40%; /* 原本是 50%，改成 40% */
                 transform: translate(-50%, -50%) perspective(800px) rotateX(40deg) rotateZ(15deg);
             }
             .map-wrapper:hover {
@@ -319,9 +326,10 @@
             .pin-connector-L { width: 80px; height: 40px; }
             .pin-label { right: 80px; bottom: 40px; font-size: 1em; padding: 6px 12px; }
             
-            /* ★★★ 手機版玉里修正：縮短線條，防止切字 ★★★ */
-            .pin-connector-L-right { width: 30px; height: 40px; } /* 從 50px 縮到 30px */
-            .pin-label-right { left: 28px; top: 40px; font-size: 1em; padding: 6px 12px; }
+            /* ★★★ 修正 2：縮短玉里線條，避免撞到螢幕邊緣 ★★★ */
+            /* 從 50px 縮到 20px，讓標籤更靠近地圖 */
+            .pin-connector-L-right { width: 20px; height: 40px; }
+            .pin-label-right { left: 18px; top: 40px; font-size: 1em; padding: 6px 12px; }
 
             .project-pin-anchor { transform: rotateZ(-15deg) rotateX(-40deg) translateZ(50px); }
         }
