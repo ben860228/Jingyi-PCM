@@ -3,147 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專案戰情儀表板</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <title>經一綠能 - 專案管理平台</title>
+    <style>
+        /* --- 全局設定 --- */
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
+            overflow: hidden; 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            background-color: #000; 
+        }
 
-    <link rel="stylesheet" href="css/style.css">
+        /* --- 1. Header 區域 (乾淨實體橫幅) --- */
+        .portal-header {
+            position: relative;
+            width: 100%;
+            height: 110px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            
+            /* 背景色：指定色 #5377A6 */
+            background-color: #5377A6; 
+            
+            /* ★★★ 修正：徹底移除紅色底線 ★★★ */
+            border-bottom: none; 
+            
+            /* 僅保留陰影增加立體感 */
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+        }
+        
+        /* LOGO 容器：強制透明、無框 */
+        .logo-box {
+            background: transparent !important; 
+            padding: 0 !important; 
+            border: none !important; 
+            margin-bottom: 5px;
+            box-shadow: none !important;
+        }
+
+        .portal-logo-img {
+            height: 50px; 
+            width: auto;
+            display: block;
+            filter: none; /* 原圖直出 */
+        }
+
+        .portal-title {
+            color: #fff;
+            font-size: 1.1em; 
+            font-weight: 900; 
+            letter-spacing: 2px; 
+            margin-top: 5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* --- 2. 水面背景 (Canvas 容器) --- */
+        #water-canvas {
+            position: absolute;
+            top: 110px; /* 接在 Header 下方 */
+            left: 0;
+            width: 100%; 
+            height: calc(100% - 110px); 
+            z-index: 1;
+            background-color: #5377A6; 
+        }
+
+        /* --- 3. 台灣地圖容器 --- */
+        .map-wrapper {
+            position: absolute;
+            top: 55%; left: 50%;
+            width: 480px; 
+            height: auto; 
+            /* 維持您覺得不錯的角度 */
+            transform: translate(-50%, -50%) perspective(1000px) rotateX(45deg) rotateZ(20deg);
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease-out;
+            z-index: 10;
+        }
+
+        .map-wrapper:hover {
+            transform: translate(-50%, -52%) perspective(1000px) rotateX(40deg) rotateZ(20deg);
+        }
+
+        .taiwan-img {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(30px 40px 50px rgba(0,0,0,0.6));
+            opacity: 0.95;
+        }
+
+        /* --- 4. 專案標籤 (Pin) --- */
+        .project-pin {
+            position: absolute;
+            transform: rotateZ(-20deg) rotateX(-45deg); 
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .pin-label {
+            background: #fff;
+            color: #003366; 
+            padding: 5px 12px;
+            font-weight: 800; 
+            font-size: 1em;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            text-decoration: none;
+            white-space: nowrap;
+            border: 2px solid #fff;
+        }
+
+        .pin-line {
+            width: 2px; height: 35px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .pin-dot {
+            width: 12px; height: 12px;
+            background: #00E676; 
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00E676;
+            border: 2px solid #fff;
+        }
+
+        .project-pin:hover { z-index: 30; transform: rotateZ(-20deg) rotateX(-45deg) scale(1.1); }
+        .project-pin:hover .pin-label {
+            background: #FFC107; 
+            color: #000;
+            border-color: #FFC107;
+        }
+
+        /* --- 5. 座標設定 (N13) --- */
+        .pin-n13 { 
+            top: 42%; left: 48%; 
+        }
+
+    </style>
 </head>
 <body>
 
-<div class="container">
-    
-    <div class="top-dashboard-wrapper">
-        <div class="logo-block">
-            <img src="images/LOGO-WITHNAME-GREEN-SQUARE.png" alt="經一綠能" class="company-logo">
+    <div class="portal-header">
+        <div class="logo-box">
+            <img src="images/LOGO-WITHNAME-BLUE-HUNDE.png" alt="經一綠能" class="portal-logo-img">
         </div>
+        <div class="portal-title">專案管理平台</div>
+    </div>
 
-        <div class="card info-block">
-            <div class="info-header">
-                <div class="title-col">
-                    <h1 id="ui-project-name">載入中...</h1>
-                    <div class="sub-title">專案戰情儀表板</div>
-                </div>
-                <div class="date-col">
-                    <span id="currentDate"></span>
-                    <div id="statusMsg" style="font-size:0.8em; margin-top:5px; color:#999;"></div>
-                </div>
-            </div>
+    <canvas id="water-canvas"></canvas>
 
-            <div class="key-people-row">
-                <div class="kp-item">
-                    <span class="kp-label">專案主管</span>
-                    <span id="ui-boss" class="kp-value">--</span>
-                </div>
-                <div class="kp-divider"></div>
-                <div class="kp-item">
-                    <span class="kp-label">專案負責人</span>
-                    <span id="ui-sponsor" class="kp-value">--</span>
-                </div>
-            </div>
+    <div class="map-wrapper">
+        <img src="images/taiwan-map.png" alt="Taiwan Map" class="taiwan-img">
 
-            <div class="general-info-grid">
-                <div class="gi-item"><span class="gi-label">地點</span><span id="ui-location">--</span></div>
-                <div class="gi-item"><span class="gi-label">主管機關</span><span id="ui-government">--</span></div>
-                <div class="gi-item"><span class="gi-label">設計</span><span id="ui-designer">--</span></div>
-                <div class="gi-item"><span class="gi-label">營造</span><span id="ui-contractor">--</span></div>
-            </div>
-        </div>
-
-        <div class="card stats-block">
-            <div class="stat-row">
-                <div class="s-label">預定進度</div>
-                <div class="s-value" id="plannedVal">--%</div>
-            </div>
-            <div class="stat-row">
-                <div class="s-label">實際進度</div>
-                <div class="s-value" id="actualVal">--%</div>
-            </div>
-            <div class="stat-row">
-                <div class="s-label">差異</div>
-                <div class="s-value" id="varianceVal">--%</div>
-                <span class="badge" id="varianceText">--</span>
-            </div>
+        <div class="project-pin pin-n13" onclick="location.href='n13-dashboard.html'">
+            <a href="n13-dashboard.html" class="pin-label">南投 N13</a>
+            <div class="pin-line"></div>
+            <div class="pin-dot"></div>
         </div>
     </div>
 
-    <div class="task-grid">
-        <div class="task-panel ongoing-panel">
-            <div class="panel-header-row">
-                <div class="title-group">
-                    <h3 class="panel-head">進行中任務</h3>
-                    <span class="sub-note">(紅框表示落後)</span>
-                </div>
-                <div class="category-legend">
-                    <div class="legend-pair"><span class="legend-dot dot-admin"></span>行政</div>
-                    <div class="legend-pair"><span class="legend-dot dot-design"></span>設計</div>
-                    <div class="legend-pair"><span class="legend-dot dot-const"></span>施工</div>
-                </div>
-            </div>
-            <div class="task-cols">
-                <div class="t-col">
-                    <div class="col-title">行政</div>
-                    <div id="ongoing-行政" class="t-list scrollable-list"></div>
-                </div>
-                <div class="t-col">
-                    <div class="col-title">設計</div>
-                    <div id="ongoing-設計" class="t-list scrollable-list"></div>
-                </div>
-                <div class="t-col">
-                    <div class="col-title">施工 (土木/機電)</div>
-                    <div id="ongoing-施工" class="t-list scrollable-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="task-panel upcoming-panel">
-            <div class="panel-header-row">
-                <div class="title-group">
-                    <h3 class="panel-head">即將發生</h3>
-                    <span class="sub-note blue">(未來 14 天)</span>
-                </div>
-            </div>
-            <div class="single-col-list scrollable-list">
-                <div id="upcoming-all"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="chart-section">
-        <h3 id="sCurveHeader">專案 S-Curve</h3>
-        <div class="chart-container">
-            <canvas id="sCurveChart"></canvas>
-        </div>
-    </div>
-
-    <div class="chart-section">
-        <h3 id="ganttHeader">專案整體進度甘特圖</h3>
+    <script>
+        const canvas = document.getElementById('water-canvas');
+        const ctx = canvas.getContext('2d');
         
-        <div class="gantt-legend">
-            <span class="legend-item"><span class="legend-color" style="background-color: #27ae60;"></span>已完成</span>
-            <span class="legend-item"><span class="legend-color" style="background-color: #3498db;"></span>進行中</span>
-            <span class="legend-item"><span class="legend-color" style="background-color: #f39c12;"></span>進行中(落後)</span>
-            <span class="legend-item"><span class="legend-color" style="background-color: #ff0000;"></span>尚未啟動而落後</span>
-        </div>
-        
-        <div class="gantt-container">
-            <canvas id="ganttChart"></canvas>
-        </div>
-    </div>
+        let width, height;
+        let t = 0;
 
-    <div class="footer-controls">
-        <button class="simple-btn" onclick="loadFromGoogle()">🔄 重新整理</button>
-        <button class="link-btn" onclick="toggleManual()">手動輸入 CSV</button>
-    </div>
-    <div id="manualSection">
-        <textarea id="csvInput" placeholder="請貼上 CSV..."></textarea>
-        <button class="simple-btn" onclick="parseManual()">確認</button>
-    </div>
-</div>
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-<script type="module" src="js/main.js"></script>
+        function draw() {
+            // 1. 底色：嚴格鎖定 #5377A6 漸層
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+            bgGradient.addColorStop(0, '#5377A6');       
+            bgGradient.addColorStop(1, '#2c3e50');       
+            
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. 光紋疊加模式
+            ctx.globalCompositeOperation = 'overlay'; 
+            ctx.lineWidth = 3; 
+
+            // 3. 繪製光紋 (Caustics) - 白色半透明
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 / i})`;
+                
+                const step = 80; 
+
+                for (let x = -100; x < width + 100; x += step) { 
+                    let y = -50;
+                    ctx.moveTo(x, y);
+
+                    while(y < height + 50) {
+                        y += 20; 
+                        const xOffset = Math.sin(y * 0.005 + t * 0.002 * i + x * 0.01) * 25;
+                        ctx.lineTo(x + xOffset, y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            ctx.globalCompositeOperation = 'source-over';
+            t++;
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+
 </body>
 </html>
