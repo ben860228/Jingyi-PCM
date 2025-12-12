@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         document.getElementById('statusMsg').textContent = "⚠️ 請先設定 CSV 連結";
     }
+
+    // ★ 初始化手機版 Tooltip 功能
+    initMobileTooltip();
 });
 
 window.toggleManual = function() {
@@ -268,6 +271,9 @@ function processData(taskCsv, infoCsv) {
 
     if(sLabels.length > 0) renderSCurve(sLabels, sPlanned, sActual, today);
     renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles);
+    
+    // ★ 重新綁定 Tooltip 事件 (因為元素是動態產生的)
+    attachMobileTooltipEvents();
 }
 
 function renderTaskList(elementId, tasks) {
@@ -293,5 +299,42 @@ function renderTaskList(elementId, tasks) {
         div.title = t.tip; 
         div.innerHTML = html;
         el.appendChild(div);
+    });
+}
+
+// ★★★ 手機 Tooltip 功能實作 ★★★
+function initMobileTooltip() {
+    // 建立一個浮動的 div
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-tooltip-overlay';
+    document.body.appendChild(overlay);
+}
+
+function attachMobileTooltipEvents() {
+    // 偵測是否為觸控裝置 (簡單判斷)或是視窗很小
+    const isMobile = ('ontouchstart' in window) || (window.innerWidth < 900);
+    
+    if(!isMobile) return;
+
+    const overlay = document.getElementById('mobile-tooltip-overlay');
+    const items = document.querySelectorAll('.task-item');
+    let timer = null;
+
+    items.forEach(item => {
+        item.addEventListener('click', (e) => {
+            // 取得 title 內容
+            const text = item.getAttribute('title');
+            if(!text) return;
+
+            // 顯示內容
+            overlay.textContent = text;
+            overlay.classList.add('show');
+
+            // 3秒後消失，或點別的時重置計時
+            if(timer) clearTimeout(timer);
+            timer = setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 3000);
+        });
     });
 }
