@@ -12,13 +12,16 @@ function doPost(e) {
             return HtmlService.createHtmlOutput('OK');
         }
 
-        var json = JSON.parse(e.postData.contents);
-        var events = json.events;
+        // 解析 JSON 資料
+        var request = JSON.parse(e.postData.contents);
+        var events = request.events;
 
         for (var i = 0; i < events.length; i++) {
             var event = events[i];
             if (event.type === 'message' && event.message.type === 'text') {
                 handleMessage(event);
+            } else if (event.type === 'follow') {
+                handleFollow(event);
             }
         }
 
@@ -180,8 +183,78 @@ function handleMessage(event) {
         return;
     }
 
-    // 3. 其他訊息 (檢查綁定並提示)
+    // 3. 使用教學
+    if (userMessage === '使用教學' || userMessage === '使用說明') {
+        replyText(replyToken, "【使用說明】\n🔹 如果尚未綁定：請先點擊「帳號綁定」驗證身分 (已綁定過則無需重複操作)。\n🔹 點擊「進入平台」：查看完整的專案儀表板。\n🔹 點擊「專案回報」：填寫施工進度或會議記錄 (主管可填寫指令)。");
+        return;
+    }
+
+    // 4. 帳號綁定教學 (改為觸發對話流程)
+    if (userMessage === '帳號綁定' || userMessage === '綁定教學') {
+        // 設定使用者狀態為 "BINDING_MODE"
+        var userProps = PropertiesService.getUserProperties();
+        userProps.setProperty(userId + '_state', 'BINDING_MODE');
+        
+        replyText(replyToken, "你的中文全名是？");
+        return;
+    }
+
+    // 5. 檢查是否處於綁定模式
+    var userProps = PropertiesService.getUserProperties();
+    var userState = userProps.getProperty(userId + '_state');
+
+    if (userState === 'BINDING_MODE') {
+        // 清除狀態 (無論成功失敗，避免卡住)
+        userProps.deleteProperty(userId + '_state');
+        processNameBinding(replyToken, userId, userMessage);
+        return;
+    }
+
+    // 6. 其他訊息 (檢查綁定並提示)
     checkAndReplyNormalMessage(replyToken, userId, userMessage);
+}
+
+/**
+ * [新版] 透過中文姓名綁定
+ */
+function processNameBinding(replyToken, userId, inputName) {
+    var app = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = app.getSheetByName('staff-table') || app.getSheets()[0];
+    var data = sheet.getDataRange().getValues();
+    var cleanName = inputName.trim();
+
+    // 遍歷尋找姓名 (Column Index 1: Name CHT)
+    var foundRowIndex = -1;
+    var targetRow = null;
+
+    for (var i = 1; i < data.length; i++) {
+        // 寬鬆比對：去除空白後相等
+        if (String(data[i][1]).trim() === cleanName) {
+            foundRowIndex = i + 1; // 1-based row index
+            targetRow = data[i];
+            break;
+        }
+    }
+
+    if (foundRowIndex === -1) {
+        replyText(replyToken, "綁定失敗請聯繫Ben (找不到此姓名)");
+        return;
+    }
+
+    // 檢查是否已被綁定 (Column Index 5: LINE_User_ID)
+    var existingId = targetRow[5];
+    if (existingId && String(existingId).trim() !== "") {
+        if (String(existingId).trim() === String(userId).trim()) {
+            replyText(replyToken, "您已經綁定過了，無需重複操作。");
+        } else {
+            replyText(replyToken, "綁定失敗請聯繫Ben (該姓名已被其他裝置綁定)");
+        }
+        return;
+    }
+
+    // 寫入 User ID
+    sheet.getRange(foundRowIndex, 6).setValue(userId); // Column F is 6
+    replyText(replyToken, "綁定成功！\n你好，" + cleanName + "。\n現在您可以點擊「專案回報」開始使用了。");
 }
 
 /**
