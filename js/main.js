@@ -5,6 +5,9 @@ import { renderSCurve } from './components/sCurveChart.js';
 // ★★★ 已填入您提供的連結 ★★★
 const TASKS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=0&single=true&output=csv";
 const PROJECT_INFO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=1735843667&single=true&output=csv";
+// ★★★ New Bulletin CSV URL ★★★
+const BULLETIN_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=479280600&single=true&output=csv";
+// Note: User provided this URL.
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -77,6 +80,21 @@ window.loadFromGoogle = async function () {
         }
 
         processData(taskCsvText, infoCsvText);
+
+        // ★★★ 3. Bulletin Data ★★★
+        if (BULLETIN_CSV_URL) {
+            try {
+                const bullRes = await fetch(BULLETIN_CSV_URL + cacheBuster);
+                if (bullRes.ok) {
+                    const bullCsv = await bullRes.text();
+                    processBulletinData(bullCsv);
+                }
+            } catch (e) {
+                console.warn("Bulletin read fail:", e);
+                // Don't block main dashboard if bulletin fails
+                document.getElementById('bulletin-list').innerHTML = "<div style='text-align:center; padding:10px; color:#e74c3c;'>讀取失敗</div>";
+            }
+        }
 
     } catch (err) {
         if (msg) {
@@ -460,3 +478,88 @@ function updateOverlayPosition(e, overlay) {
     overlay.style.top = (e.clientY + 15) + 'px';
     overlay.style.transform = 'none';
 }
+
+
+// --- Bulletin Logic ---
+
+function parseGoogleFormsTimestamp(ts) {
+    if (!ts) return new Date(0);
+    // Format: 2025/12/16 上午 8:00:00
+    // Try native parse first
+    let d = new Date(ts);
+    if (!isNaN(d.valueOf())) return d;
+
+    // Custom parse for Chinese AM/PM
+    // Remove "上午" or "下午" and track it
+    let isPM = ts.includes("下午");
+    let isAM = ts.includes("上午");
+    let cleanTs = ts.replace("上午", "").replace("下午", "").trim();
+    // cleanTs likely: 2025/12/16 8:00:00
+
+    d = new Date(cleanTs);
+    if (!isNaN(d.valueOf())) {
+        if (isPM && d.getHours() < 12) d.setHours(d.getHours() + 12);
+        if (isAM && d.getHours() === 12) d.setHours(0); // 12:00 AM is 0:00
+        return d;
+    }
+    return new Date(0);
+}
+
+function processBulletinData(csvText) {
+    if (!csvText) return;
+    const results = Papa.parse(csvText, { header: true, skipEmptyLines: true }).data;
+
+    const validItems = results.filter(r => r['Content'] || r['內容']);
+
+    // Sort descending by Timestamp
+    validItems.sort((a, b) => {
+        const tA = a['Timestamp'] || a['時間戳記'] || '';
+        const tB = b['Timestamp'] || b['時間戳記'] || '';
+        const dA = parseGoogleFormsTimestamp(tA);
+        const dB = parseGoogleFormsTimestamp(tB);
+        return dB - dA;
+    });
+
+    renderBulletinList(validItems);
+}
+
+function renderBulletinList(items) {
+    const container = document.getElementById('bulletin-list');
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (items.length === 0) {
+        container.innerHTML = "<div style='text-align:center; padding:20px; color:#ccc;'>尚無訊息</div>";
+        return;
+    }
+
+    items.forEach(item => {
+        // Safe get value
+        const dateStr = item['Date'] || item['日期'] || '--/--';
+        const author = item['Author'] || item['作者'] || 'Unknown';
+        const type = item['Type'] || item['類型'] || '一般';
+        const content = item['Content'] || item['內容'] || '';
+
+        // Skip if empty content
+        if (!content.trim()) return;
+
+        const div = document.createElement('div');
+        div.className = 'bulletin-item';
+
+        const isBoss = (type === '主管訊息' || type === 'Boss');
+        const typeClass = isBoss ? 'b-type boss' : 'b-type';
+
+        div.innerHTML = `
+            <div class="b-header">
+                <span class="b-date">${dateStr}</span>
+                <div class="b-tag-group">
+                    <span class="${typeClass}">${type}</span>
+                    <span class="b-author">${author}</span>
+                </div>
+            </div>
+            <div class="b-content">${content}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
