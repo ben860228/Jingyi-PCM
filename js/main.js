@@ -482,24 +482,42 @@ function updateOverlayPosition(e, overlay) {
 
 // --- Bulletin Logic ---
 
+function parseGoogleFormsTimestamp(ts) {
+    if (!ts) return new Date(0);
+    // Format: 2025/12/16 上午 8:00:00
+    // Try native parse first
+    let d = new Date(ts);
+    if (!isNaN(d.valueOf())) return d;
+
+    // Custom parse for Chinese AM/PM
+    // Remove "上午" or "下午" and track it
+    let isPM = ts.includes("下午");
+    let isAM = ts.includes("上午");
+    let cleanTs = ts.replace("上午", "").replace("下午", "").trim();
+    // cleanTs likely: 2025/12/16 8:00:00
+
+    d = new Date(cleanTs);
+    if (!isNaN(d.valueOf())) {
+        if (isPM && d.getHours() < 12) d.setHours(d.getHours() + 12);
+        if (isAM && d.getHours() === 12) d.setHours(0); // 12:00 AM is 0:00
+        return d;
+    }
+    return new Date(0);
+}
+
 function processBulletinData(csvText) {
     if (!csvText) return;
-    // Assume headers exist: Timestamp, Date, Author, Type, Category, Content...
-    // Adjust header: true to read column names.
     const results = Papa.parse(csvText, { header: true, skipEmptyLines: true }).data;
 
-    // Sort by Date (assume key 'Date' or '日期' or first column)
-    // Actually, timestamp is better for sorting "Latest".
-    // 假設欄位包含：Timestamp, Date, Author, Type, Category, Content
-    // We want latest first.
+    const validItems = results.filter(r => r['Content'] || r['內容']);
 
-    const validItems = results.filter(r => r['Content'] || r['內容']); // Basic filter
-
-    // Sort descending by Timestamp or Date
+    // Sort descending by Timestamp
     validItems.sort((a, b) => {
-        const da = new Date(a['Timestamp'] || a['時間戳記'] || 0);
-        const db = new Date(b['Timestamp'] || b['時間戳記'] || 0);
-        return db - da;
+        const tA = a['Timestamp'] || a['時間戳記'] || '';
+        const tB = b['Timestamp'] || b['時間戳記'] || '';
+        const dA = parseGoogleFormsTimestamp(tA);
+        const dB = parseGoogleFormsTimestamp(tB);
+        return dB - dA;
     });
 
     renderBulletinList(validItems);
