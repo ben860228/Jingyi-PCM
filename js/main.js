@@ -5,6 +5,9 @@ import { renderSCurve } from './components/sCurveChart.js';
 // ★★★ 已填入您提供的連結 ★★★
 const TASKS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=0&single=true&output=csv";
 const PROJECT_INFO_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=1735843667&single=true&output=csv";
+// ★★★ New Bulletin CSV URL ★★★
+const BULLETIN_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=479280600&single=true&output=csv";
+// Note: User provided this URL.
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -77,6 +80,21 @@ window.loadFromGoogle = async function () {
         }
 
         processData(taskCsvText, infoCsvText);
+
+        // ★★★ 3. Bulletin Data ★★★
+        if (BULLETIN_CSV_URL) {
+            try {
+                const bullRes = await fetch(BULLETIN_CSV_URL + cacheBuster);
+                if (bullRes.ok) {
+                    const bullCsv = await bullRes.text();
+                    processBulletinData(bullCsv);
+                }
+            } catch (e) {
+                console.warn("Bulletin read fail:", e);
+                // Don't block main dashboard if bulletin fails
+                document.getElementById('bulletin-list').innerHTML = "<div style='text-align:center; padding:10px; color:#e74c3c;'>讀取失敗</div>";
+            }
+        }
 
     } catch (err) {
         if (msg) {
@@ -460,3 +478,70 @@ function updateOverlayPosition(e, overlay) {
     overlay.style.top = (e.clientY + 15) + 'px';
     overlay.style.transform = 'none';
 }
+
+
+// --- Bulletin Logic ---
+
+function processBulletinData(csvText) {
+    if (!csvText) return;
+    // Assume headers exist: Timestamp, Date, Author, Type, Category, Content...
+    // Adjust header: true to read column names.
+    const results = Papa.parse(csvText, { header: true, skipEmptyLines: true }).data;
+
+    // Sort by Date (assume key 'Date' or '日期' or first column)
+    // Actually, timestamp is better for sorting "Latest".
+    // 假設欄位包含：Timestamp, Date, Author, Type, Category, Content
+    // We want latest first.
+
+    const validItems = results.filter(r => r['Content'] || r['內容']); // Basic filter
+
+    // Sort descending by Timestamp or Date
+    validItems.sort((a, b) => {
+        const da = new Date(a['Timestamp'] || a['時間戳記'] || 0);
+        const db = new Date(b['Timestamp'] || b['時間戳記'] || 0);
+        return db - da;
+    });
+
+    renderBulletinList(validItems);
+}
+
+function renderBulletinList(items) {
+    const container = document.getElementById('bulletin-list');
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (items.length === 0) {
+        container.innerHTML = "<div style='text-align:center; padding:20px; color:#ccc;'>尚無訊息</div>";
+        return;
+    }
+
+    items.forEach(item => {
+        // Safe get value
+        const dateStr = item['Date'] || item['日期'] || '--/--';
+        const author = item['Author'] || item['作者'] || 'Unknown';
+        const type = item['Type'] || item['類型'] || '一般';
+        const content = item['Content'] || item['內容'] || '';
+
+        // Skip if empty content
+        if (!content.trim()) return;
+
+        const div = document.createElement('div');
+        div.className = 'bulletin-item';
+
+        const isBoss = (type === '主管訊息' || type === 'Boss');
+        const typeClass = isBoss ? 'b-type boss' : 'b-type';
+
+        div.innerHTML = `
+            <div class="b-header">
+                <span class="b-date">${dateStr}</span>
+                <div class="b-tag-group">
+                    <span class="${typeClass}">${type}</span>
+                    <span class="b-author">${author}</span>
+                </div>
+            </div>
+            <div class="b-content">${content}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
