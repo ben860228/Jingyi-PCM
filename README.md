@@ -1,8 +1,8 @@
-# 🏗️ Jingyi PCM (專案管理戰情室)
+# Jingyi PCM (專案管理戰情室)
 
 這是一個專為營建工程設計的專案管理系統，整合了 Google Sheets 作為後端資料庫，並透過 LINE LIFF 提供行動端回報介面，最終在 Web 端呈現視覺化的戰情儀表板。
 
-## 📂 目錄結構說明
+## 目錄結構說明
 
 本專案主要分為「前端儀表板 (Web)」與「後端應用程式 (GAS)」兩大部分。
 
@@ -39,17 +39,17 @@
 ### 4. 後端應用 (Google Apps Script)
 *   **`GAS/` 資料夾**
     *   存放所有與 LINE Bot、LIFF 表單以及 Google Sheet 互動的後端程式碼。
-    *   詳細說明請參閱 👉 [GAS/README.md](GAS/README.md)。
+    *   詳細說明請參閱 [GAS/README.md](GAS/README.md)。
 
 ---
 
-## 🚀 如何新增專案？
+## 如何新增專案？
 1.  複製一份現有的儀表板 (如 `JY_N13-dashboard.html`) 並重新命名。
 2.  修改新檔案中的 `<title>` 與 `window.PROJECT_CONFIG` 內的 CSV 連結。
 3.  在 `index.html` 中新增對應的地標按鈕 (Pin)。
 4.  在 Google Sheet 後端設定好對應的 `Project_ID`。
 
-## 🛠️ 技術棧
+## 技術棧
 *   **Frontend**: HTML5, CSS3, Vanilla JS
 *   **Libraries**: Chart.js, PapaParse
 *   **Backend**: Google Apps Script (GAS)
