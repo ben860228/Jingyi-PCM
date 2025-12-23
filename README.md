@@ -53,7 +53,7 @@
 4.  在 `index.html` 中新增對應的地標按鈕 (Pin)。
 5.  在 Google Sheet 後端 (project-table) 設定好對應的 `Project_ID`。
 
-## 技術棧
+## Tech Stack
 *   **Frontend**: HTML5, CSS3, Vanilla JS
 *   **Libraries**: Chart.js, PapaParse
 *   **Backend**: Google Apps Script (GAS)
