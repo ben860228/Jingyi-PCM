@@ -10,6 +10,7 @@
     *   `Service_SheetDB` (.gs)
     *   `Service_Bulletin` (.gs)
     *   `View_FlexMessages` (.gs)
+    *   `line_type_form` (.html) (由此檔案讀取 HTML)
 3.  **複製內容**：請將 GitHub 上對應檔案的內容複製到這幾個新檔案中。
 4.  **重新部署**：
     *   點擊右上角「部署 (Deploy)」 -> 「管理部署 (Manage deployments)」。

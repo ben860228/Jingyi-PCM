@@ -45,6 +45,10 @@
 *   **主要函式**：
     *   `createBulletinFlex`：產生「進度回報」的專案卡片樣式。
 
+### 7. `line_type_form.html` (前端表單)
+*   **功能**：LIFF 網頁的前端介面 (HTML/CSS/JS)。
+*   **用途**：透過 `App_Main.gs` 的 `doGet` 函式載入，提供使用者填寫回報單。
+
 ---
 
 ## 結構異動紀錄
