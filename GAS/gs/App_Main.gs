@@ -36,6 +36,9 @@ function doPost(e) {
  */
 function doGet(e) {
     // ★★★ Production Form ★★★
+    // GAS/Clasp 雖然本地有資料夾，但在 script.google.com 上會被攤平
+    // 如果 Clasp 設定得宜，有時候會保留 html/ 前綴，但看截圖是純檔名
+    // 保險起見，我們先改回純檔名引用，或依照您的截圖調整
     var template = HtmlService.createTemplateFromFile('line_type_form');
     
     // 關鍵修改：直接從後端接收參數，如果沒有就給空字串
@@ -46,4 +49,8 @@ function doGet(e) {
         .setTitle('JingYi Pubish System')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
