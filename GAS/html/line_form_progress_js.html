@@ -1,0 +1,335 @@
+<script>
+    // --- WEEKLY PROGRESS LOGIC ---
+
+    let g_progressTasks = [];
+    let g_progressDates = [];
+    let g_progressUpdates = {}; // { "TaskName": { progress: 50, actStart: '...', actEnd: '...' } }
+    let g_loadingTasks = false;
+
+    function fetchProgressData(projectId) {
+        const pList = document.getElementById('progressList');
+        pList.innerHTML = '<div class="text-center text-info mt-5"><div class="spinner-border" role="status"></div><div class="mt-2">正在讀取週進度資料...</div></div>';
+        g_loadingTasks = true; // Set loading flag
+
+        google.script.run
+            .withSuccessHandler(res => {
+                try {
+                    const data = JSON.parse(res);
+                    g_loadingTasks = false;
+                    if (data.success) {
+                        g_progressTasks = data.tasks;
+                        g_progressDates = data.dateHeaders || [];
+                        initProgressDateSelect();
+                        renderProgressCards();
+                    } else {
+                        pList.innerHTML = `<div class="text-center text-danger mt-5">讀取失敗: ${data.message}</div>`;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    g_loadingTasks = false;
+                    pList.innerHTML = `<div class="text-center text-danger mt-5">資料處理錯誤: ${e.message}</div>`;
+                }
+            })
+            .withFailureHandler(err => {
+                g_loadingTasks = false;
+                pList.innerHTML = `<div class="text-center text-danger mt-5">系統錯誤: ${err.message}</div>`;
+            })
+            .getProjectTasksWithHistory(projectId);
+    }
+
+    function initProgressDateSelect() {
+        try {
+            const sel = document.getElementById('progressDateSelect');
+            sel.innerHTML = "";
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+
+            let selectedKey = "";
+            let latestPastDate = null;
+
+            if (!g_progressDates || g_progressDates.length === 0) {
+                sel.add(new Option("無日期資料", ""));
+                document.getElementById('progressList').innerHTML = '<div class="text-center text-muted mt-5">此專案尚未設定日期進度欄位</div>';
+                return;
+            }
+
+            g_progressDates.forEach(dStr => {
+                const d = new Date(dStr);
+                if (isNaN(d.getTime())) return;
+                if (d <= today) latestPastDate = dStr;
+                sel.add(new Option(dStr, dStr));
+            });
+
+            if (latestPastDate) selectedKey = latestPastDate;
+            else if (g_progressDates.length > 0) selectedKey = g_progressDates[0];
+
+            if (selectedKey) sel.value = selectedKey;
+
+            renderProgressCards(); // Initial Render
+
+            sel.onchange = function () { renderProgressCards(); };
+        } catch (e) {
+            console.error(e);
+            alert("初始化日期選單失敗: " + e.message);
+        }
+    }
+
+    // --- HELPER FUNCTIONS ---
+    function getLastKnownProgress(task, currentKey) {
+        if (!g_progressDates || g_progressDates.length === 0) return 0;
+        const idx = g_progressDates.indexOf(currentKey);
+        if (idx <= 0) return 0;
+        for (let i = idx - 1; i >= 0; i--) {
+            const k = g_progressDates[i];
+            const v = task.progressHistory[k];
+            if (v !== undefined && v !== "") return v;
+        }
+        return 0;
+    }
+
+    function getLastReportedDate(task) {
+        let maxKey = "";
+        if (task && task.progressHistory) {
+            for (let k in task.progressHistory) {
+                const v = task.progressHistory[k];
+                if (v !== undefined && v !== null && String(v).trim() !== "") {
+                    if (k > maxKey) maxKey = k;
+                }
+            }
+        }
+        if (maxKey === "") return null;
+        return maxKey;
+    }
+
+    function renderProgressCards() {
+        const container = document.getElementById('progressList');
+        const selInfo = document.getElementById('progressDateSelect');
+        if (!selInfo) return;
+        const targetDateKey = selInfo.value;
+        const showAll = document.getElementById('showAllTasksSwitch').checked;
+
+        // debugLog("Render Start. DateKey: " + targetDateKey + ", ShowAll: " + showAll);
+
+        if (!g_progressTasks) {
+            // debugLog("Render: No Tasks Data");
+            if (g_loadingTasks) {
+                container.innerHTML = '<div class="text-center mt-5">載入中...</div>';
+                return;
+            }
+            container.innerHTML = '<div class="text-center text-muted mt-5">暫無專案資料，請嘗試重新整理。</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+        g_progressUpdates = {};
+        try { updateSubmitButton(); } catch (e) { debugLog("BtnUpdate Error: " + e.message); }
+
+        try {
+            if (!targetDateKey) {
+                debugLog("Render: Missing Date Key");
+                container.innerHTML = '<div class="text-center text-muted mt-5">請選擇回報日期</div>';
+                return;
+            }
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let tasksToShow = [];
+
+            g_progressTasks.forEach(t => {
+                const pStart = t.planStart ? new Date(t.planStart) : null;
+                const pEnd = t.planEnd ? new Date(t.planEnd) : null;
+                const aStart = t.actStart ? new Date(t.actStart) : null;
+                const aEnd = t.actEnd ? new Date(t.actEnd) : null;
+
+                let isRelevant = false;
+                let priority = 0;
+                let statusLabel = "";
+                let statusColor = "secondary";
+
+                if (aEnd) {
+                    statusLabel = "已完成"; statusColor = "success";
+                    if (showAll) { isRelevant = true; priority = 1; }
+                } else {
+                    if (pEnd && pEnd < today) {
+                        isRelevant = true; priority = 10;
+                        statusLabel = "落後 / 逾期"; statusColor = "danger";
+                    } else if (aStart) {
+                        isRelevant = true; priority = 8;
+                        statusLabel = "進行中"; statusColor = "primary";
+                    } else if (pStart && pStart <= today) {
+                        isRelevant = true; priority = 5;
+                        statusLabel = "應進行"; statusColor = "warning";
+                    } else {
+                        statusLabel = "未開始";
+                        if (showAll) { isRelevant = true; priority = 0; }
+                    }
+                }
+
+                if (isRelevant) {
+                    tasksToShow.push({ task: t, pri: priority, label: statusLabel, color: statusColor });
+                }
+            });
+
+            tasksToShow.sort((a, b) => b.pri - a.pri);
+
+            // debugLog("Render: Final Count=" + tasksToShow.length);
+
+            if (tasksToShow.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted mt-5">本週無須回報項目 (🎉)</div>';
+                return;
+            }
+
+            tasksToShow.forEach(item => {
+                const t = item.task;
+                let lastVal = getLastKnownProgress(t, targetDateKey);
+                let currentVal = t.progressHistory[targetDateKey];
+                let initialVal = (currentVal !== undefined) ? currentVal : lastVal;
+                let lastReportDate = getLastReportedDate(t);
+
+                // DEBUG DATE
+                if (lastReportDate) debugLog("Task: " + t.name + ", LastReport=" + lastReportDate);
+
+                if (lastVal > 0 && lastVal <= 1) lastVal = Number((lastVal * 100).toFixed(2));
+                if (initialVal > 0 && initialVal <= 1) initialVal = Number((initialVal * 100).toFixed(2));
+                if (!initialVal || initialVal === 0) {
+                    let hasCompletedBefore = false;
+                    for (let dateKey in t.progressHistory) {
+                        let hVal = t.progressHistory[dateKey];
+                        if (hVal >= 1 || hVal === 100) { hasCompletedBefore = true; break; }
+                    }
+                    if (hasCompletedBefore) initialVal = 100;
+                }
+
+                const card = document.createElement('div');
+                card.className = "card mb-2 border-" + item.color + " shadow-sm";
+                card.style.backgroundColor = '#2c3034';
+
+                // Safe String Construction
+                let infoBadgeHtml = '';
+                if (lastReportDate && typeof lastReportDate === 'string' && lastReportDate.trim().length > 0) {
+                    // Changed text-muted to text-info for better visibility on dark bg
+                    infoBadgeHtml = '<span class="badge bg-dark border border-secondary text-info fw-normal" style="font-size:0.75em;">最後回報: ' + lastReportDate + '</span>';
+                }
+
+                card.innerHTML =
+                    '<div class="card-body p-2">' +
+                    '<div class="d-flex justify-content-between align-items-start">' +
+                    '<h6 class="card-title text-white mb-1 me-2" style="word-break: break-all;">' + t.name + '</h6>' +
+                    '<span class="badge bg-' + item.color + '" style="white-space: nowrap;">' + item.label + '</span>' +
+                    '</div>' +
+                    '<div class="text-secondary small mb-2 d-flex justify-content-between align-items-center">' +
+                    '<span>' + t.planStart + ' ~ ' + t.planEnd + '</span>' +
+                    infoBadgeHtml +
+                    '</div>' +
+                    '<div class="d-flex align-items-center mb-2">' +
+                    '<div class="me-3 text-secondary" style="font-size:0.85em;">上週: ' + lastVal + '%</div>' +
+                    '<div class="flex-grow-1">' +
+                    '<div class="input-group input-group-sm">' +
+                    '<span class="input-group-text bg-dark text-info border-secondary" onclick="openCalc(this.getAttribute(\'data-task\'))" data-task="' + t.name + '" style="cursor:pointer;" title="開啟計算機">📝</span>' +
+                    '<input type="number" id="inp_' + t.name + '" class="form-control text-center fw-bold fs-5" ' +
+                    'min="0" max="100" ' +
+                    'value="' + initialVal + '" ' +
+                    'onchange="onProgressChange(\'' + t.name + '\', this.value)" ' +
+                    'style="background-color: #495057; color: #fff; border: 1px solid #6c757d;">' +
+                    '<span class="input-group-text bg-transparent text-white border-0">%</span>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<button class="btn btn-sm btn-link text-decoration-none text-light p-0" type="button" onclick="toggleDetails(this)">🔻 詳細日期</button>' +
+                    '<div class="mt-2 text-white" style="display:none; border-top: 1px solid #444; padding-top: 5px;">' +
+                    '<div class="row g-2">' +
+                    '<div class="col-6">' +
+                    '<label class="small text-secondary">實際開始</label>' +
+                    '<input type="date" class="form-control form-control-sm bg-dark text-white border-secondary" value="' + formatDateForInput(t.actStart) + '" onchange="onDateChange(\'' + t.name + '\', \'actStart\', this.value)">' +
+                    '</div>' +
+                    '<div class="col-6">' +
+                    '<label class="small text-secondary">實際完成</label>' +
+                    '<input type="date" class="form-control form-control-sm bg-dark text-white border-secondary" value="' + formatDateForInput(t.actEnd) + '" onchange="onDateChange(\'' + t.name + '\', \'actEnd\', this.value)">' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>';
+
+                container.appendChild(card);
+            });
+        } catch (e) {
+            console.error("Render Error:", e);
+            container.innerHTML = '<div class="text-center text-danger mt-5">頁面渲染錯誤: ' + e.message + '</div>';
+        }
+    }
+
+    function formatDateForInput(d) { return d ? d.replace(/\//g, '-') : ''; }
+    function toggleDetails(btn) {
+        const div = btn.nextElementSibling;
+        const shown = div.style.display !== 'none';
+        div.style.display = shown ? 'none' : 'block';
+        btn.innerText = shown ? '🔻 詳細日期' : '🔺 收起詳細日期';
+    }
+    function onProgressChange(taskName, val) {
+        let num = parseInt(val);
+        if (isNaN(num)) num = 0; if (num < 0) num = 0; if (num > 100) num = 100;
+        if (!g_progressUpdates[taskName]) g_progressUpdates[taskName] = {};
+        g_progressUpdates[taskName].progress = num;
+        g_progressUpdates[taskName].dateKey = document.getElementById('progressDateSelect').value;
+        updateSubmitButton();
+    }
+    function onDateChange(taskName, f, v) {
+        if (!g_progressUpdates[taskName]) g_progressUpdates[taskName] = {};
+        g_progressUpdates[taskName][f] = v.replace(/-/g, '/');
+        updateSubmitButton();
+    }
+    function updateSubmitButton() {
+        const c = Object.keys(g_progressUpdates).length;
+        document.getElementById('progress-update-count').innerText = c;
+        document.getElementById('btnSubmitProgress').style.display = c > 0 ? 'block' : 'none';
+    }
+    function submitProgressBatch() {
+        const updates = [];
+        for (let k in g_progressUpdates) { updates.push({ taskName: k, ...g_progressUpdates[k] }); }
+        if (updates.length === 0) return;
+
+        const btn = document.getElementById('btnSubmitProgress');
+        btn.disabled = true; btn.innerText = "⏳ 處理中...";
+        const pid = document.getElementById('projectSelect').value;
+        const uid = document.getElementById('lineUserId').value;
+
+        google.script.run
+            .withSuccessHandler(res => {
+                try {
+                    const r = JSON.parse(res);
+                    if (r.success) {
+                        updateStatus(`✅ 成功更新 ${r.count} 筆資料！`);
+                        g_progressUpdates = {};
+
+
+                        // Visual Feedback
+                        const btn = document.getElementById('btnSubmitProgress');
+                        btn.innerText = "✅ 更新成功";
+
+                        setTimeout(() => {
+                            updateSubmitButton();
+                            // Fix: Don't just rely on fetch, we want to ensure UI is stable.
+                            // Calling fetchProgressData updates loadingTasks=true.
+                            // If toggle happens, it shows 'Loading'. 
+                            // To fix "blank screen", ensure we handle the transition.
+                            debugLog("Submitting done. Re-fetching data.");
+                            fetchProgressData(pid);
+
+                            btn.disabled = false;
+                            btn.innerText = "🚀 送出更新 (0)";
+                        }, 1000);
+                    } else {
+                        alert("更新失敗: " + r.message);
+                        const btn = document.getElementById('btnSubmitProgress');
+                        btn.disabled = false; btn.innerText = "🚀 送出更新 (0)";
+                    }
+                } catch (ex) {
+                    alert("前端處理回應錯誤: " + ex.message + "\n回應內容: " + res);
+                    const btn = document.getElementById('btnSubmitProgress');
+                    btn.disabled = false; btn.innerText = "🚀 送出更新 (0)";
+                }
+            })
+            .withFailureHandler(e => { alert("更新錯誤:" + e.message); btn.disabled = false; })
+            .updateTaskProgress(pid, updates, uid);
+    }
+</script>
