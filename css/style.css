@@ -47,6 +47,9 @@ body {
     justify-content: space-between;
 }
 
+/* Removed broken global layout rules to restore original state */
+
+
 .info-header {
     display: flex;
     justify-content: space-between;
@@ -233,6 +236,12 @@ body {
 .bg-green {
     background: #e8f8f5;
     color: #27ae60;
+}
+
+/* Responsive Status Text Wrapper */
+.wrap-status {
+    display: inline-block;
+    margin-left: 6px;
 }
 
 /* --- 任務 Grid --- */
@@ -686,6 +695,36 @@ textarea {
         gap: 10px;
     }
 
+    .brand-sidebar {
+        width: 180px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .info-block {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    /* Removed incorrect desktop styles that were causing mobile layout issues */
+
+    /* Common Values */
+    .s-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 5px 0;
+    }
+
+    .s-sub {
+        font-size: 0.85em;
+        color: #999;
+    }
+
     .logo-block {
         align-self: center;
         margin-bottom: 0;
@@ -733,15 +772,63 @@ textarea {
         padding-top: 15px;
         /* 統一頂部距離 */
         padding-bottom: 15px;
+        flex: 1;
+        /* Share width equally */
+        padding-left: 2px;
+        /* Reduce minimal padding */
+        padding-right: 2px;
+        min-width: 0;
+        /* Allow flex shrink below content size */
     }
 
-    .stat-row:last-child {
-        border-right: none;
+    /* Ensure columns are flex containers to handle height consistency */
+    .stat-row>div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* Center horizontally */
+        justify-content: flex-start;
     }
 
     .s-value {
         font-size: 1.4em;
-        margin-bottom: 8px;
+        margin-bottom: 2px;
+        /* Remove flexible margin here, control via parent or s-sub */
+    }
+
+    /* Fix for long sub-text overlapping on mobile */
+    .s-sub {
+        font-size: 0.65em;
+        /* Slightly smaller to fit 375px */
+        line-height: 1.25;
+        white-space: normal;
+        word-break: break-word;
+        /* Safer */
+        overflow-wrap: break-word;
+        /* Standard */
+        display: block;
+        width: 100%;
+        text-align: center;
+        /* Center align text */
+        margin-top: auto;
+        /* Push to bottom of the column */
+        padding-top: 4px;
+        /* Ensure some space from value */
+    }
+
+    /* Force line break for status text on mobile */
+    .wrap-status {
+        display: block;
+        margin-left: 0;
+    }
+
+    /* Additional class for badges to ensure they also push to bottom if used directly */
+    .s-sub-badge {
+        margin-top: auto;
+        display: inline-block;
+        /* Badges are inline-block */
+        margin-bottom: 2px;
+        /* Fine tune to align with text baseline if needed */
     }
 
     .task-grid {
@@ -954,11 +1041,18 @@ textarea {
     /* Always first */
 }
 
-.b-item-tag {
+.b-tag-group {
     order: 2;
     /* Desktop: Middle */
-    width: auto;
+    display: inline-flex;
+    /* Use flex to align tag and icon */
+    align-items: center;
     margin-top: 0;
+}
+
+.b-item-tag {
+    /* order removed, controlled by parent group */
+    width: auto;
 }
 
 .b-info-group {
@@ -1036,11 +1130,55 @@ textarea {
     }
 
     /* Force Big Tag to break line */
-    .b-item-tag {
+    /* Force Group to break line */
+    /* Force Group to break line */
+    .b-tag-group {
         width: 100% !important;
-        margin-top: 6px !important;
+        margin-top: 2px !important;
+        /* Reduced gap */
         order: 3;
         /* Mobile: Last (New Row) */
-        display: block;
+        display: flex;
+        align-items: center;
+        /* Vertically align icon and text */
+        justify-content: space-between;
+        /* Tag takes left, Icon takes right */
     }
+
+    .b-item-tag {
+        order: 1;
+        /* Ensure Tag is first */
+        flex: 1 1 auto;
+        /* Grow to fill space */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        /* max-width removed, let flex handle it */
+        display: block;
+        margin-right: 5px;
+        /* Tiny gap before icon */
+    }
+}
+
+/* History Icon (Menu) */
+.history-icon {
+    font-size: 1.4em;
+    cursor: pointer;
+    margin-left: 8px;
+    order: 2;
+    /* Ensure Icon is second */
+    color: #95a5a6;
+    /* vertical-align: sub; -> handled by flex align-items center now */
+    font-weight: bold;
+    transition: color 0.2s;
+    display: inline-block;
+    padding: 0 4px;
+    flex-shrink: 0;
+    /* Never shrink */
+}
+
+.history-icon:hover {
+    color: #2c3e50;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
 }
