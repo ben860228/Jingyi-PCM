@@ -153,7 +153,7 @@ function processData(taskCsv, infoCsv) {
         });
     }
 
-    const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerHTML = txt; };
     setTxt('ui-project-name', projectInfo.name);
     setTxt('ui-location', projectInfo.location);
     setTxt('ui-government', projectInfo.government);
@@ -190,7 +190,7 @@ function processData(taskCsv, infoCsv) {
     // --- 日期判斷 ---
     const plannedDateObj = getLastFriday(today);
     const pStr = `${plannedDateObj.getFullYear()}/${(plannedDateObj.getMonth() + 1).toString().padStart(2, '0')}/${plannedDateObj.getDate().toString().padStart(2, '0')}`;
-    setTxt('plannedDateStr', `${pStr} 已更新`);
+    setTxt('plannedDateStr', `${pStr}<span class="wrap-status">已更新</span>`);
 
     // 找出最後一個有資料的日期 (cutoff)
     let lastFilledDateStr = "--/--/--";
@@ -203,8 +203,39 @@ function processData(taskCsv, infoCsv) {
             lastFilledDateStr = dateKey;
         }
     });
-    setTxt('actualDateStr', `${lastFilledDateStr} 已回報`);
 
+    // --- 修正進度回報文字邏輯 ---
+    let reportStatusText = "已全部回報";
+    if (lastFilledDateStr !== "--/--/--") {
+        let expectedCount = 0;
+        let filledCount = 0;
+        taskData.forEach(row => {
+            // 判斷該工項是否應回報：實際開始時間 已填寫 (表示已啟動)
+            const actStart = row['實際開始時間'];
+            if (actStart && actStart.trim() !== "") {
+                expectedCount++;
+                // 檢查當期是否填寫
+                const val = row[lastFilledDateStr];
+                if (val !== undefined && val !== null && val.trim() !== "") {
+                    filledCount++;
+                }
+            }
+        });
+
+        // Update Actual Progress text with new logic (Partial vs Full)
+        let statusText = "已回報";
+        if (expectedCount > 0) {
+            statusText = (filledCount < expectedCount) ? "已部分回報" : "已全部回報";
+        } else {
+            // If no tasks expected, maybe default to "已全部回報" or just "已回報"
+            // Using "已全部回報" as default safe state if dates match
+            statusText = "已全部回報";
+        }
+
+        setTxt('actualDateStr', `${lastFilledDateStr}<span class="wrap-status">${statusText}</span>`);
+    } else {
+        setTxt('actualDateStr', '無回報資料');
+    }
     const actualCutoffDate = parseDate(lastFilledDateStr);
 
 
@@ -388,11 +419,17 @@ function processData(taskCsv, infoCsv) {
 
     if (elVar && elBadge) {
         if (variance < -5) {
-            elVar.className = "s-value text-red"; elBadge.className = "badge bg-red"; elBadge.textContent = "落後";
+            elVar.className = "s-value text-red";
+            elBadge.className = "badge bg-red s-sub-badge"; // Add custom class for alignment if needed, or re-add s-sub
+            elBadge.innerHTML = "落後";
         } else if (variance >= 0) {
-            elVar.className = "s-value text-green"; elBadge.className = "badge bg-green"; elBadge.textContent = "正常";
+            elVar.className = "s-value text-green";
+            elBadge.className = "badge bg-green s-sub-badge";
+            elBadge.innerHTML = "正常";
         } else {
-            elVar.className = "s-value"; elBadge.className = "badge"; elBadge.textContent = "可控";
+            elVar.className = "s-value";
+            elBadge.className = "badge s-sub-badge";
+            elBadge.innerHTML = "可控";
         }
     }
 
@@ -561,7 +598,7 @@ function processBulletinData(csvText, historyCsvText) {
     const results = Papa.parse(csvText, { header: true, skipEmptyLines: true }).data;
     const validItems = results.filter(r => r['Content'] || r['內容']);
 
-    // Sort descending by Timestamp
+    // Sort descending by Timestamp (Newest first)
     validItems.sort((a, b) => {
         // 1. Primary: Date
         const dateAStr = a['Date'] || a['日期'] || '';
@@ -582,7 +619,68 @@ function processBulletinData(csvText, historyCsvText) {
         return tsB - tsA; // Newer submission first
     });
 
-    renderBulletinList(validItems);
+    // --- Grouping Logic ---
+    // Group by 'Item' (Work Item).
+    const groups = new Map(); // Key: ItemName, Value: [item1, item2...] (Sorted Newest First)
+    const displayItems = [];
+
+    // validItems is sorted NEWEST first.
+    validItems.forEach(item => {
+        const itemVal = item['Item'] || item['工項'] || item['Item (Work Item)'];
+
+        if (!itemVal || itemVal.trim() === "") {
+            // No Item name -> no grouping
+            displayItems.push(item);
+        } else {
+            if (!groups.has(itemVal)) {
+                groups.set(itemVal, []);
+            }
+            groups.get(itemVal).push(item);
+        }
+    });
+
+    // Process Groups
+    groups.forEach((groupItems) => {
+        // groupItems[0] is the latest
+        const latestInfo = groupItems[0];
+        // Store full history in the latest item for the modal
+        latestInfo._fullHistory = groupItems;
+        displayItems.push(latestInfo);
+    });
+
+    // We pushed grouped items to displayItems, but we also pushed non-grouped items directly.
+    // Need to resort displayItems? 
+    // validItems was sorted by date. iterating it sequentially preserves order for non-grouped.
+    // But for grouped, we only pushed the first one when we encountered it? NO.
+    // The previous logic was: iterate validItems. If seen, add to history. If not seen, add to displayItems AND groups.
+    // Let's revert to that simpler O(N) logic but attach the full list.
+
+    // Re-implementation of 1-pass approach:
+    const seenMap = new Map(); // Key: ItemName, Value: LatestItem
+    const finalDisplayList = [];
+
+    validItems.forEach(item => {
+        const itemVal = item['Item'] || item['工項'] || item['Item (Work Item)'];
+        if (!itemVal || itemVal.trim() === "") {
+            finalDisplayList.push(item);
+        } else {
+            if (seenMap.has(itemVal)) {
+                // Prior report
+                const latest = seenMap.get(itemVal);
+                if (!latest._fullHistory) latest._fullHistory = [latest]; // Ensure it has itself
+                latest._fullHistory.push(item);
+            } else {
+                // Latest report
+                seenMap.set(itemVal, item);
+                item._fullHistory = [item]; // Start with itself
+                finalDisplayList.push(item);
+            }
+        }
+    });
+
+    // Sort again just to be safe? validItems was sorted, and we pushed in order. Should be fine.
+
+    renderBulletinList(finalDisplayList);
 }
 
 function renderBulletinList(items) {
@@ -627,7 +725,19 @@ function renderBulletinList(items) {
             if (category.includes('設計')) colorClass = 'tag-design';
             if (category.includes('施工')) colorClass = 'tag-const';
 
-            itemTagHtml = `<span class="b-item-tag ${colorClass}">${itemVal}</span>`;
+            let historyIconHtml = '';
+            // Check if we have prior reports (grouped items). Length > 1 means Latest + at least 1 prior.
+            if (item._fullHistory && item._fullHistory.length > 1) {
+                const tempId = 'group_' + Math.random().toString(36).substr(2, 9);
+                if (!window.g_tempHistoryGroups) window.g_tempHistoryGroups = {};
+                window.g_tempHistoryGroups[tempId] = item._fullHistory;
+                historyIconHtml = `<span class="history-icon" onclick="openPriorReports('${tempId}')" title="查看所有回報紀錄">≡</span>`;
+            }
+
+            // Wrap in a group for better positioning control
+            itemTagHtml = `<div class="b-tag-group">
+                <span class="b-item-tag ${colorClass}">${itemVal}</span>${historyIconHtml}
+            </div>`;
         }
 
         // Histroy Emoji Logic
@@ -720,11 +830,73 @@ window.closeHistoryModal = function () {
     document.getElementById('historyModal').style.display = 'none';
 };
 
+
+window.openPriorReports = function (id) {
+    if (!window.g_tempHistoryGroups || !window.g_tempHistoryGroups[id]) return;
+    const historyData = window.g_tempHistoryGroups[id];
+
+    // Reuse the history modal logic
+    const list = document.getElementById('historyList');
+    list.innerHTML = "";
+
+    // Header for the modal
+    const modalTitle = document.querySelector('#historyModal h3');
+    // Get Work Item Info
+    const latestItem = historyData[0];
+    const workItemName = latestItem['Item'] || latestItem['工作項目'] || '工作項目';
+    const category = latestItem['Category'] || latestItem['分類'] || '';
+
+    // Determine Color Dot
+    let dotClass = 'legend-dot';
+    if (category.includes('行政')) dotClass += ' dot-admin';
+    else if (category.includes('設計')) dotClass += ' dot-design';
+    else if (category.includes('施工')) dotClass += ' dot-const';
+
+    if (modalTitle) {
+        modalTitle.innerHTML = `<span class="${dotClass}" style="display:inline-block; margin-right:8px; vertical-align:middle; width:12px; height:12px; border-radius: 2px;"></span>${workItemName} <span style="font-size:0.8em; color:#666;">過往回報紀錄</span>`;
+    }
+
+    historyData.forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+
+        let content = h['Content'] || h['內容'] || '';
+        content = content.replace(/\n/g, '<br>');
+
+        const dateStr = h['Date'] || h['日期'] || '--/--';
+        const typeVal = h['Type'] || h['類型'] || '';
+        const authorVal = h['Author'] || h['填報人'] || '';
+
+        div.innerHTML = `
+            <div class="h-meta">
+                <span class="h-time" style="color:#2c3e50; font-weight:bold;">${dateStr}</span>
+                <span class="b-author" style="margin-left:auto; margin-right:5px; font-weight:normal;">${authorVal}</span>
+                <span class="h-type">${typeVal}</span>
+            </div>
+            <div class="h-content">
+                ${content || '(無內容)'}
+            </div>
+        `;
+        list.appendChild(div);
+    });
+
+    document.getElementById('historyModal').style.display = 'block';
+}
+
 // Close modal when clicking outside
 window.onclick = function (event) {
     const modal = document.getElementById('historyModal');
     if (event.target == modal) {
         modal.style.display = "none";
+        // Reset title 
+        const modalTitle = document.querySelector('#historyModal h3');
+        if (modalTitle) modalTitle.textContent = "📜 修改歷史紀錄";
     }
 };
+window.closeHistoryModal = function () {
+    document.getElementById('historyModal').style.display = 'none';
+    const modalTitle = document.querySelector('#historyModal h3');
+    if (modalTitle) modalTitle.textContent = "📜 修改歷史紀錄";
+};
+
 
