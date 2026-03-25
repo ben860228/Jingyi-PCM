@@ -214,34 +214,48 @@ function processData(taskCsv, infoCsv) {
     });
 
     // --- 修正進度回報文字邏輯 ---
-    let reportStatusText = "已全部回報";
     if (lastFilledDateStr !== "--/--/--") {
         let expectedCount = 0;
         let filledCount = 0;
+        let missingTasks = [];
         taskData.forEach(row => {
-            // 判斷該工項是否應回報：實際開始時間 已填寫 (表示已啟動)
+            // 判斷該工項是否應回報：實際開始時間已填 (表示已啟動) 且 未填寫實際完成時間 (表示未完工)
             const actStart = row['實際開始時間'];
-            if (actStart && actStart.trim() !== "") {
+            const actEnd = row['實際完成時間'];
+            const isStarted = actStart && actStart.trim() !== "";
+            const isFinished = actEnd && actEnd.trim() !== "";
+
+            if (isStarted && !isFinished) {
                 expectedCount++;
                 // 檢查當期是否填寫
                 const val = row[lastFilledDateStr];
                 if (val !== undefined && val !== null && val.trim() !== "") {
                     filledCount++;
+                } else {
+                    missingTasks.push(row['任務名稱'] || "未命名任務");
                 }
             }
         });
 
         // Update Actual Progress text with new logic (Partial vs Full)
-        let statusText = "已回報";
+        let statusText = "已全部回報";
+        let tooltipAttr = "";
+        let tooltipClass = "";
+
         if (expectedCount > 0) {
-            statusText = (filledCount < expectedCount) ? "已部分回報" : "已全部回報";
+            if (filledCount < expectedCount) {
+                statusText = "已部分回報";
+                tooltipAttr = ` data-tooltip="未回報項目：\n· ${missingTasks.join('\n· ')}"`;
+                tooltipClass = " tooltip-target";
+            } else {
+                statusText = "已全部回報";
+            }
         } else {
-            // If no tasks expected, maybe default to "已全部回報" or just "已回報"
-            // Using "已全部回報" as default safe state if dates match
+            // 如果當前無進行中工項，顯示已全部回報
             statusText = "已全部回報";
         }
 
-        setTxt('actualDateStr', `${lastFilledDateStr}<span class="wrap-status">${statusText}</span>`);
+        setTxt('actualDateStr', `${lastFilledDateStr}<span class="wrap-status${tooltipClass}"${tooltipAttr}>${statusText}</span>`);
     } else {
         setTxt('actualDateStr', '無回報資料');
     }
@@ -503,7 +517,7 @@ function initTooltipOverlay() {
 
 function attachTaskCardEvents() {
     const overlay = document.getElementById('mobile-tooltip-overlay');
-    const items = document.querySelectorAll('.task-item');
+    const items = document.querySelectorAll('.task-item, .tooltip-target');
     let timer = null;
 
     if (!overlay) return;
