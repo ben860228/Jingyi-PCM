@@ -29,9 +29,9 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                         const now = today.valueOf();
                         const actRaw = actualData[index]; 
 
-                        if (pStart > now) return '#e8e8e8'; 
-                        if (actRaw && actRaw[1] < now) return '#f8f8f8'; 
-                        return '#cccccc'; 
+                        if (pStart > now) return '#8a8a8a'; // 尚未發生：中灰，清晰不搶眼
+                        if (actRaw && actRaw[1] < now) return '#e8e8e8'; // 已完成：退場
+                        return '#8a8a8a'; // 進行中：中灰
                     },
                     borderWidth: 0,
                     barPercentage: 1.3,
@@ -89,7 +89,7 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                             if (context.datasetIndex === 1) { 
                                 const color = context.dataset.backgroundColor[context.dataIndex];
                                 if (color === '#ff0000') return `${context.dataset.label}: 尚未啟動`;
-                                else if (color !== '#27ae60' && color !== '#c0392b') dEnd = "進行中";
+                                else if (color !== '#b8c5ce') dEnd = "進行中"; // 已完成用新統一色
                             }
                             return `${context.dataset.label}: ${dStart} ~ ${dEnd}`;
                         }
@@ -162,7 +162,7 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                         const diffTime = today.valueOf() - pData[0];
                         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                         aStr = `尚未啟動，已落後 ${diffDays} 天`;
-                    } else if (color !== '#27ae60' && color !== '#c0392b') {
+                    } else if (color !== '#b8c5ce') { // 已完成用新統一色
                         aStr = `${fmt(aData[0])} ~ 進行中`;
                     } else {
                         aStr = `${fmt(aData[0])} ~ ${fmt(aData[1])}`;

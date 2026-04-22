@@ -91,10 +91,8 @@ window.exportGanttToPDF = async function () {
         const filename = `${pName}-甘特圖報表-${fYYYY}${fMM}${fDD}_${fHH}${fMin}.pdf`;
 
         // 3. Render High-Res Chart
-        // Target: A4 Landscape Aspect Ratio ~1.414 (297/210)
-        // To ensure "Full Width" (no side bars), our Image Aspect Ratio must be >= 1.414.
-        // If Image is "taller" (Ratio < 1.414), jsPDF fits by height -> Side Bars.
-        // We calculate required width to force Ratio >= 1.42.
+        // Target: 16:10 Aspect Ratio (1.6) — fits modern PPT slides directly
+        // Width / TotalHeight >= 1.6 ensures no black bars on 16:10 slides
 
         // Estimate Height first
         const itemHeight = 52; // Compact height
@@ -102,17 +100,13 @@ window.exportGanttToPDF = async function () {
         let tempHeight = itemCount * itemHeight + 200; // Chart Height
         if (tempHeight < 2000) tempHeight = 2000;
 
-        // Header/Footer allowance in Wrapper ~250px? 
-        // Actually tempHeight is just the CANVAS height. 
-        // The Wrapper adds Header (~200px) + Footer (~100px) + Padding (~40px).
-        // Total Wrapper Height ~= tempHeight + 350.
+        // Header/Footer allowance in Wrapper
         const totalWrapperHeightEst = tempHeight + 350;
 
-        // Dynamic Width Calculation
-        // We want (Width / TotalHeight) >= 1.415
-        // Width >= TotalHeight * 1.415
-        const minWidthForFullPage = Math.ceil(totalWrapperHeightEst * 1.42);
-        const exportWidth = Math.max(3508, minWidthForFullPage); // At least 300DPI A4 Width
+        // Dynamic Width Calculation for 16:10
+        // We want (Width / TotalHeight) >= 1.60
+        const minWidthForFullPage = Math.ceil(totalWrapperHeightEst * 1.62);
+        const exportWidth = Math.max(4000, minWidthForFullPage); // 至少4000px確保高清晰度
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = exportWidth;
@@ -139,9 +133,9 @@ window.exportGanttToPDF = async function () {
                             const reportTime = reportDateObj.valueOf();
                             const actRaw = clampedActual[index]; // Use Clamped for logic check availability
 
-                            if (pStart > reportTime) return '#e8e8e8';
-                            if (actRaw && actRaw[1] < reportTime) return '#f8f8f8';
-                            return '#cccccc';
+                            if (pStart > reportTime) return '#8a8a8a'; // 尚未發生：中灰，清晰不損號
+                            if (actRaw && actRaw[1] < reportTime) return '#e8e8e8'; // 已完成：退場
+                            return '#8a8a8a'; // 進行中：中灰
                         },
                         borderWidth: 0,
                         barPercentage: 1.3,
@@ -224,7 +218,7 @@ window.exportGanttToPDF = async function () {
         exportDiv.style.left = '-9999px';
         exportDiv.style.top = '0';
         exportDiv.style.width = exportWidth + 'px'; // Dynamic Width
-        exportDiv.style.backgroundColor = '#ffffff';
+        exportDiv.style.backgroundColor = '#ededea'; // 稍深暨灰，大螢幕投影時較清晰
         exportDiv.style.color = '#000000';
         exportDiv.style.padding = '30px';
         // Updated Font Family: Arial for English, JhengHei for Chinese
@@ -240,8 +234,30 @@ window.exportGanttToPDF = async function () {
         if (vText.includes('落後')) badgeColor = '#c0392b';
         else if (vText.includes('超前')) badgeColor = '#27ae60';
 
+        // 圖例先定義，才能在 headerHtml 的 template literal 中引用
+        const legendHtml = `
+            <div style="display:flex; gap: 50px; align-items:center; font-size: 40px;">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #b8c5ce; border-radius: 6px;"></div>
+                    <span>已完成</span>
+                </div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #3498db; border-radius: 6px;"></div>
+                    <span>進行中</span>
+                </div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #f39c12; border-radius: 6px;"></div>
+                    <span>進行中(落後)</span>
+                </div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #e74c3c; border-radius: 6px;"></div>
+                    <span>尚未啟動而落後</span>
+                </div>
+            </div>
+        `;
+
         const headerHtml = `
-            <div style="border-bottom: 5px solid #333; padding-bottom: 15px; margin-bottom: 25px;">
+            <div style="border-bottom: 5px solid #333; padding-bottom: 15px; margin-bottom: 0;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div style="flex: 1;">
                          <div style="font-size: 72px; font-weight: bold; margin-bottom: 20px;">
@@ -258,42 +274,22 @@ window.exportGanttToPDF = async function () {
                         </div>
                     </div>
 
-                    <div style="text-align:right;">
+                    <!-- LOGO 圓圖例分開：LOGO頂對齊，不被圖例擠展 -->
+                    <div style="text-align:right; flex-shrink:0;">
                         <img src="images/LOGO-WITHNAME-BLUE-HUNDE.png" style="height: 160px; display: block; margin-left: auto;">
                     </div>
                 </div>
             </div>
-            
-            <!-- Export Time Right Below Line -->
-            <div style="text-align:right; font-size: 32px; color: #666; margin-top: -10px; margin-bottom: 20px;">
-                由經一綠能專案管理平台 ${exportTimeStr} 匯出
-            </div>
-        `;
 
-        const legendHtml = `
-            <div style="display:flex; gap: 30px; align-items:center; font-size: 28px;">
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #27ae60; border-radius: 4px;"></div>
-                    <span>已完成</span>
-                </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #3498db; border-radius: 4px;"></div>
-                    <span>進行中</span>
-                </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #f39c12; border-radius: 4px;"></div>
-                    <span>進行中(落後)</span>
-                </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #e74c3c; border-radius: 4px;"></div>
-                    <span>尚未啟動而落後</span>
-                </div>
+            <!-- 圖例列：兩個元素都靠右，由左到右：圖例 → 時間文字 -->
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap: 60px; padding: 18px 0 20px 0; margin-bottom: 10px;">
+                <div>${legendHtml}</div>
+                <div style="font-size: 32px; color: #666;">由經一綠能專案管理平台 ${exportTimeStr} 匯出</div>
             </div>
         `;
 
         const footerHtml = `
-            <div style="margin-top: auto; border-top: 3px solid #ccc; padding-top: 20px; display:flex; justify-content:flex-end; gap: 60px; align-items: center; color: #666; font-size: 32px;">
-                <div>${legendHtml}</div>
+            <div style="margin-top: auto; border-top: 3px solid #ccc; padding-top: 20px; display:flex; justify-content:flex-end; align-items: center; color: #666; font-size: 32px;">
                 <div>備註：進度每週五更新</div>
             </div>
         `;
@@ -316,12 +312,13 @@ window.exportGanttToPDF = async function () {
 
         // 5. Capture & Save
         const canvas = await window.html2canvas(exportDiv, {
-            scale: 1, // Native 300 DPI size (3508px wide)
+            scale: 2, // 2x DPI：文字與圖例色塊銅利，放大時仍清晰
             useCORS: true,
             logging: false
         });
 
-        const pdf = new jsPDF('l', 'mm', 'a4');
+        // 16:10 頁面尺寸 508 x 317.5mm（=20"x12.5"），不需放大鏡即可填滿常規應用視窗
+        const pdf = new jsPDF('l', 'mm', [508, 317.5]);
         const imgParams = pdf.getImageProperties(canvas.toDataURL('image/jpeg', 0.90));
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();

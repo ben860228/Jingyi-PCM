@@ -376,7 +376,7 @@ function processData(taskCsv, infoCsv) {
             let drawEnd = actEnd ? actEnd : today;
             actDataPoint = [actStart.valueOf(), drawEnd.valueOf()];
             if (actEnd) {
-                barColor = (planEnd && actEnd > planEnd) ? '#c0392b' : '#27ae60';
+                barColor = '#b8c5ce'; // 已完成：更淡的冷灰，視覺退場不損号辨識度
                 labelStyle.color = '#bdc3c7';
             } else {
                 if (planEnd && today > planEnd) {
