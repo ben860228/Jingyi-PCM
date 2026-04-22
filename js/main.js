@@ -376,7 +376,7 @@ function processData(taskCsv, infoCsv) {
             let drawEnd = actEnd ? actEnd : today;
             actDataPoint = [actStart.valueOf(), drawEnd.valueOf()];
             if (actEnd) {
-                barColor = (planEnd && actEnd > planEnd) ? '#c0392b' : '#27ae60';
+                barColor = '#8e9eab'; // 已完成：統一使用低調灰藍色，不管是否超時
                 labelStyle.color = '#bdc3c7';
             } else {
                 if (planEnd && today > planEnd) {
