@@ -134,7 +134,7 @@ window.exportGanttToPDF = async function () {
                             const actRaw = clampedActual[index]; // Use Clamped for logic check availability
 
                             if (pStart > reportTime) return '#e8e8e8';
-                            if (actRaw && actRaw[1] < reportTime) return '#d0d0d0'; // 已完成
+                            if (actRaw && actRaw[1] < reportTime) return '#e8e8e8'; // 已完成：與尚未發生同色，退場
                             return '#cccccc';
                         },
                         borderWidth: 0,
@@ -218,7 +218,7 @@ window.exportGanttToPDF = async function () {
         exportDiv.style.left = '-9999px';
         exportDiv.style.top = '0';
         exportDiv.style.width = exportWidth + 'px'; // Dynamic Width
-        exportDiv.style.backgroundColor = '#f7f7f5'; // 略帶暖灰，投影機展示時淡色 bar 更清晰
+        exportDiv.style.backgroundColor = '#ededea'; // 稍深暨灰，大螢幕投影時較清晰
         exportDiv.style.color = '#000000';
         exportDiv.style.padding = '30px';
         // Updated Font Family: Arial for English, JhengHei for Chinese
@@ -283,8 +283,8 @@ window.exportGanttToPDF = async function () {
 
             <!-- 圖例列：分隔線下方、小標題右方 -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 0 20px 0; margin-bottom: 10px;">
-                <div>${legendHtml}</div>
                 <div style="font-size: 32px; color: #666;">由經一綠能專案管理平台 ${exportTimeStr} 匯出</div>
+                <div>${legendHtml}</div>
             </div>
         `;
 
@@ -312,13 +312,13 @@ window.exportGanttToPDF = async function () {
 
         // 5. Capture & Save
         const canvas = await window.html2canvas(exportDiv, {
-            scale: 1, // Native 300 DPI size (3508px wide)
+            scale: 2, // 2x DPI：文字與圖例色塊銅利，放大時仍清晰
             useCORS: true,
             logging: false
         });
 
-        // 16:10 頁面尺寸 (mm)：304.8 x 190.5 = 1.6 ratio，符合現代 PPT 投影規格
-        const pdf = new jsPDF('l', 'mm', [304.8, 190.5]);
+        // 16:10 頁面尺寸 508 x 317.5mm（=20"x12.5"），不需放大鏡即可填滿常規應用視窗
+        const pdf = new jsPDF('l', 'mm', [508, 317.5]);
         const imgParams = pdf.getImageProperties(canvas.toDataURL('image/jpeg', 0.90));
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();

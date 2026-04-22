@@ -30,7 +30,7 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                         const actRaw = actualData[index]; 
 
                         if (pStart > now) return '#e8e8e8'; // 尚未開始
-                        if (actRaw && actRaw[1] < now) return '#d0d0d0'; // 已完成：比進行中稍淡一點，但仍清晰可讀
+                        if (actRaw && actRaw[1] < now) return '#e8e8e8'; // 已完成：與尚未發生同色，完全退場
                         return '#cccccc'; // 進行中
                     },
                     borderWidth: 0,
