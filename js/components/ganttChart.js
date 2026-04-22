@@ -29,9 +29,9 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                         const now = today.valueOf();
                         const actRaw = actualData[index]; 
 
-                        if (pStart > now) return '#3d3d3d'; // 尚未發生：深灰實驗
+                        if (pStart > now) return '#8a8a8a'; // 尚未發生：中灰，清晰不搶眼
                         if (actRaw && actRaw[1] < now) return '#e8e8e8'; // 已完成：退場
-                        return '#3d3d3d'; // 進行中：深灰實驗
+                        return '#8a8a8a'; // 進行中：中灰
                     },
                     borderWidth: 0,
                     barPercentage: 1.3,
