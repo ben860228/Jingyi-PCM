@@ -133,9 +133,9 @@ window.exportGanttToPDF = async function () {
                             const reportTime = reportDateObj.valueOf();
                             const actRaw = clampedActual[index]; // Use Clamped for logic check availability
 
-                            if (pStart > reportTime) return '#e8e8e8';
-                            if (actRaw && actRaw[1] < reportTime) return '#e8e8e8'; // 已完成：與尚未發生同色，退場
-                            return '#cccccc';
+                            if (pStart > reportTime) return '#3d3d3d'; // 尚未發生：深灰實驗
+                            if (actRaw && actRaw[1] < reportTime) return '#e8e8e8'; // 已完成：退場
+                            return '#3d3d3d'; // 進行中：深灰實驗
                         },
                         borderWidth: 0,
                         barPercentage: 1.3,
@@ -281,10 +281,10 @@ window.exportGanttToPDF = async function () {
                 </div>
             </div>
 
-            <!-- 圖例列：分隔線下方、小標題右方 -->
+            <!-- 圖例列：圖例在左，時間在最右 -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 0 20px 0; margin-bottom: 10px;">
-                <div style="font-size: 32px; color: #666;">由經一綠能專案管理平台 ${exportTimeStr} 匯出</div>
                 <div>${legendHtml}</div>
+                <div style="font-size: 32px; color: #666;">由經一綠能專案管理平台 ${exportTimeStr} 匯出</div>
             </div>
         `;
 
