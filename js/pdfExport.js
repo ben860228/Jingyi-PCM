@@ -106,7 +106,7 @@ window.exportGanttToPDF = async function () {
         // Dynamic Width Calculation for 16:10
         // We want (Width / TotalHeight) >= 1.60
         const minWidthForFullPage = Math.ceil(totalWrapperHeightEst * 1.62);
-        const exportWidth = Math.max(3200, minWidthForFullPage); // At least 3200px base width
+        const exportWidth = Math.max(4000, minWidthForFullPage); // 至少4000px確保高清晰度
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = exportWidth;
@@ -134,7 +134,7 @@ window.exportGanttToPDF = async function () {
                             const actRaw = clampedActual[index]; // Use Clamped for logic check availability
 
                             if (pStart > reportTime) return '#e8e8e8';
-                            if (actRaw && actRaw[1] < reportTime) return '#f8f8f8';
+                            if (actRaw && actRaw[1] < reportTime) return '#d0d0d0'; // 已完成
                             return '#cccccc';
                         },
                         borderWidth: 0,
@@ -236,28 +236,28 @@ window.exportGanttToPDF = async function () {
 
         // 圖例先定義，才能在 headerHtml 的 template literal 中引用
         const legendHtml = `
-            <div style="display:flex; gap: 30px; align-items:center; font-size: 28px;">
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #8e9eab; border-radius: 4px;"></div>
+            <div style="display:flex; gap: 50px; align-items:center; font-size: 40px;">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #b8c5ce; border-radius: 6px;"></div>
                     <span>已完成</span>
                 </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #3498db; border-radius: 4px;"></div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #3498db; border-radius: 6px;"></div>
                     <span>進行中</span>
                 </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #f39c12; border-radius: 4px;"></div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #f39c12; border-radius: 6px;"></div>
                     <span>進行中(落後)</span>
                 </div>
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <div style="width: 30px; height: 30px; background-color: #e74c3c; border-radius: 4px;"></div>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; background-color: #e74c3c; border-radius: 6px;"></div>
                     <span>尚未啟動而落後</span>
                 </div>
             </div>
         `;
 
         const headerHtml = `
-            <div style="border-bottom: 5px solid #333; padding-bottom: 15px; margin-bottom: 25px;">
+            <div style="border-bottom: 5px solid #333; padding-bottom: 15px; margin-bottom: 0;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div style="flex: 1;">
                          <div style="font-size: 72px; font-weight: bold; margin-bottom: 20px;">
@@ -274,17 +274,17 @@ window.exportGanttToPDF = async function () {
                         </div>
                     </div>
 
-                    <div style="text-align:right;">
+                    <!-- LOGO 圓圖例分開：LOGO頂對齊，不被圖例擠展 -->
+                    <div style="text-align:right; flex-shrink:0;">
                         <img src="images/LOGO-WITHNAME-BLUE-HUNDE.png" style="height: 160px; display: block; margin-left: auto;">
-                        <!-- 圖例放在 LOGO 下方，對齊右側 -->
-                        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">${legendHtml}</div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Export Time Right Below Line -->
-            <div style="text-align:right; font-size: 32px; color: #666; margin-top: -10px; margin-bottom: 20px;">
-                由經一綠能專案管理平台 ${exportTimeStr} 匯出
+
+            <!-- 圖例列：分隔線下方、小標題右方 -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 18px 0 20px 0; margin-bottom: 10px;">
+                <div>${legendHtml}</div>
+                <div style="font-size: 32px; color: #666;">由經一綠能專案管理平台 ${exportTimeStr} 匯出</div>
             </div>
         `;
 
