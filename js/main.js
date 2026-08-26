@@ -11,8 +11,8 @@ const DEFAULT_INFO_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2
 const DEFAULT_BULLETIN_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=479280600&single=true&output=csv";
 
 // Use config if available, otherwise default
-const TASKS_CSV_URL = config.tasksUrl || DEFAULT_TASKS_URL;
-const PROJECT_INFO_CSV_URL = config.infoUrl || DEFAULT_INFO_URL;
+let TASKS_CSV_URL = config.tasksUrl || DEFAULT_TASKS_URL;
+let PROJECT_INFO_CSV_URL = config.infoUrl || DEFAULT_INFO_URL;
 const BULLETIN_CSV_URL = config.bulletinUrl || DEFAULT_BULLETIN_URL;
 // ⚠️ IMPORTANT: User must provide this URL!
 const BULLETIN_HISTORY_URL = config.bulletinHistoryUrl || "YOUR_HISTORY_CSV_URL_HERE";
@@ -54,7 +54,23 @@ function getLastFriday(date) {
     return d;
 }
 
-window.loadFromGoogle = async function () {
+window.isCatchUpMode = false;
+window.toggleCatchUpMode = function () {
+    window.isCatchUpMode = !window.isCatchUpMode;
+    
+    if (window.isCatchUpMode) {
+        document.body.classList.add('catch-up-mode');
+        TASKS_CSV_URL = config.catchUpTasksUrl || TASKS_CSV_URL;
+    } else {
+        document.body.classList.remove('catch-up-mode');
+        TASKS_CSV_URL = config.tasksUrl || DEFAULT_TASKS_URL;
+    }
+    
+    // 重新載入，我們傳入 skipBulletin = true 避免公佈欄重整閃爍
+    loadFromGoogle(true);
+}
+
+window.loadFromGoogle = async function (skipBulletin = false) {
     const msg = document.getElementById('statusMsg');
     if (msg) {
         msg.textContent = "⏳ 更新中...";
@@ -90,7 +106,7 @@ window.loadFromGoogle = async function () {
         processData(taskCsvText, infoCsvText);
 
         // ★★★ 3. Bulletin Data ★★★
-        if (BULLETIN_CSV_URL) {
+        if (BULLETIN_CSV_URL && !skipBulletin) {
             try {
                 const bullRes = await fetch(BULLETIN_CSV_URL + cacheBuster);
 
@@ -158,7 +174,13 @@ function processData(taskCsv, infoCsv) {
     }
 
     const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerHTML = txt; };
-    setTxt('ui-project-name', projectInfo.name);
+    
+    let displayName = projectInfo.name;
+    if (window.isCatchUpMode) {
+        displayName += " (趕工板)";
+    }
+    setTxt('ui-project-name', displayName);
+    
     setTxt('ui-location', projectInfo.location);
     setTxt('ui-government', projectInfo.government);
     setTxt('ui-designer', projectInfo.designer);
@@ -170,9 +192,21 @@ function processData(taskCsv, infoCsv) {
     setTxt('ui-process', projectInfo.process);
     setTxt('ui-mep', projectInfo.mep);
     setTxt('ui-type', projectInfo.type);
-    setTxt('sCurveHeader', `${projectInfo.name} S-Curve`);
-    setTxt('ganttHeader', `${projectInfo.name} 專案整體進度甘特圖`);
-
+    if (window.isCatchUpMode) {
+        setTxt('sCurveHeader', `${projectInfo.name} 趕工S-Curve`);
+        setTxt('ganttHeader', `${projectInfo.name} 趕工專案整體進度甘特圖`);
+        setTxt('ui-planned-label', '趕工預定進度');
+        setTxt('ui-actual-label', '趕工實際進度');
+        setTxt('ui-variance-label', '趕工差異');
+        setTxt('ui-ongoing-label', '趕工進行中任務');
+    } else {
+        setTxt('sCurveHeader', `${projectInfo.name} S-Curve`);
+        setTxt('ganttHeader', `${projectInfo.name} 專案整體進度甘特圖`);
+        setTxt('ui-planned-label', '預定進度');
+        setTxt('ui-actual-label', '實際進度');
+        setTxt('ui-variance-label', '差異');
+        setTxt('ui-ongoing-label', '進行中任務');
+    }
 
     // --- 2. S-Curve 與日期計算 ---
     let minDateOverall = new Date("2099-12-31");
@@ -190,9 +224,15 @@ function processData(taskCsv, infoCsv) {
     if (maxPlannedEnd > 0) {
         // 設定緩衝 30 天
         const cutoffTime = maxPlannedEnd + (30 * 86400000);
+        
+        let minTime = 0;
+        if (window.isCatchUpMode) {
+            minTime = new Date("2026/04/28").valueOf();
+        }
+
         historicalDateKeys = historicalDateKeys.filter(k => {
             const kd = parseDate(k);
-            return kd && kd.valueOf() <= cutoffTime;
+            return kd && kd.valueOf() <= cutoffTime && kd.valueOf() >= minTime;
         });
     }
 
@@ -464,8 +504,24 @@ function processData(taskCsv, infoCsv) {
     const finalActualData = ganttActualRaw.map(d => d.data);
     const finalActualColors = ganttActualRaw.map(d => d.color);
 
+    let ganttMinDate = '2025-10-01';
+    if (window.isCatchUpMode) {
+        ganttMinDate = '2026-04-28';
+        
+        // 調整甘特圖高度以適應較少的工項
+        const ganttContainer = document.querySelector('.gantt-container');
+        if (ganttContainer) {
+            ganttContainer.style.height = (ganttLabels.length * 40 + 100) + 'px'; // 根據項目數量動態調整高度
+        }
+    } else {
+        const ganttContainer = document.querySelector('.gantt-container');
+        if (ganttContainer) {
+            ganttContainer.style.height = '1000px'; // 恢復預設高度
+        }
+    }
+
     if (sLabels.length > 0) renderSCurve(sLabels, sPlanned, sActual, today);
-    renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles);
+    renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles, ganttMinDate);
 
     // Cache Data for PDF Export
     window.ganttDataCache = {
@@ -474,7 +530,8 @@ function processData(taskCsv, infoCsv) {
         actual: finalActualData,
         colors: finalActualColors,
         today: today,
-        styles: ganttTaskStyles
+        styles: ganttTaskStyles,
+        minDate: ganttMinDate
     };
 
     attachTaskCardEvents();

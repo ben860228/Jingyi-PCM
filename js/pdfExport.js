@@ -162,7 +162,7 @@ window.exportGanttToPDF = async function () {
                     x: {
                         type: 'time',
                         time: { unit: 'month', displayFormats: { month: 'yy/MM' } },
-                        min: '2025-10-01',
+                        min: window.ganttDataCache.minDate || '2025-10-01',
                         position: 'top',
                         grid: { color: '#f0f0f0' },
                         ticks: { font: { size: 38 } } // Scaled Font used 38
