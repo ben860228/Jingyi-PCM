@@ -25,7 +25,8 @@
             tasksUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=0&single=true&output=csv",
             infoUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=1735843667&single=true&output=csv",
             bulletinUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=479280600&single=true&output=csv",
-            bulletinHistoryUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=704936196&single=true&output=csv"
+            bulletinHistoryUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiyY2STxHEAcJIa_wBeLHRYpGj82dozn-1tCo_ZhltPo-CABMaWOD88K7LLJnXTtW_3IV-k2qZq8HV/pub?gid=704936196&single=true&output=csv",
+            catchUpTasksUrl: "https://docs.google.com/spreadsheets/d/19nCtXk65BPg0TWBSSPT90qQBf0YS3fgFQsLlxCyyxv4/export?format=csv&gid=0"
         };
     </script>
 </head>
@@ -39,9 +40,9 @@
                 <a href="index.html" class="logo-block" style="text-decoration: none;" title="返回首頁">
                     <img src="images/LOGO-WITHNAME-GREEN-SQUARE.png" alt="經一綠能" class="company-logo">
                 </a>
-                <div class="project-image-block">
+                <div class="project-image-block" style="cursor: pointer;" onclick="window.toggleCatchUpMode()" title="切換趕工板">
                     <!-- Project Image -->
-                    <img src="images/JY_N13-LOGO-SQUARE.png" alt="N13專案圖片" class="project-img-placeholder">
+                    <img src="images/JY_N13-LOGO-SQUARE.png" alt="N13專案圖片" class="project-img-placeholder" id="catchUpToggleButton" style="transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(231,76,60,0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
                 </div>
             </div>
 
@@ -88,17 +89,17 @@
 
             <div class="card stats-block">
                 <div class="stat-row">
-                    <div class="s-label">預定進度</div>
+                    <div class="s-label" id="ui-planned-label">預定進度</div>
                     <div class="s-value" id="plannedVal">--%</div>
                     <div class="s-sub" id="plannedDateStr">--/--/-- 已更新</div>
                 </div>
                 <div class="stat-row">
-                    <div class="s-label">實際進度</div>
+                    <div class="s-label" id="ui-actual-label">實際進度</div>
                     <div class="s-value" id="actualVal">--%</div>
                     <div class="s-sub" id="actualDateStr">--/--/-- 已回報</div>
                 </div>
                 <div class="stat-row">
-                    <div class="s-label">差異</div>
+                    <div class="s-label" id="ui-variance-label">差異</div>
                     <div class="s-value" id="varianceVal">--%</div>
                     <span class="badge" id="varianceText">--</span>
                 </div>
@@ -123,7 +124,7 @@
             <div class="task-panel ongoing-panel">
                 <div class="panel-header-row">
                     <div class="title-group">
-                        <h3 class="panel-head">進行中任務</h3>
+                        <h3 class="panel-head" id="ui-ongoing-label">進行中任務</h3>
                         <span class="sub-note">(紅框表示落後)</span>
                     </div>
                     <div class="category-legend">

@@ -1417,3 +1417,28 @@ textarea {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
 }
+
+/* ★★★ 趕工板模式樣式 (Catch-up Mode) ★★★ */
+body.catch-up-mode {
+    background-color: #fff8e1; /* 淡黃色背景，明顯但柔和 */
+}
+
+body.catch-up-mode .card,
+body.catch-up-mode .task-panel,
+body.catch-up-mode .chart-section {
+    border-color: #ffe082;
+    box-shadow: 0 2px 12px rgba(255, 193, 7, 0.15);
+}
+
+body.catch-up-mode .info-header h1 {
+    color: #d84315; /* 深橘紅色 */
+}
+
+body.catch-up-mode .panel-head {
+    border-left-color: #e65100;
+}
+
+body.catch-up-mode .sub-title, 
+body.catch-up-mode .chart-section h3 {
+    border-left-color: #e65100;
+}

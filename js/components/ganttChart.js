@@ -1,6 +1,6 @@
 let ganttChartInstance = null;
 
-export function renderGantt(labels, plannedData, actualData, actualColors, today, taskStyles) {
+export function renderGantt(labels, plannedData, actualData, actualColors, today, taskStyles, minDate = '2025-10-01') {
     const canvas = document.getElementById('ganttChart');
     const ctx = canvas.getContext('2d');
 
@@ -54,7 +54,7 @@ export function renderGantt(labels, plannedData, actualData, actualColors, today
                 x: {
                     type: 'time',
                     time: { unit: 'month', displayFormats: { month: 'yy/MM' } },
-                    min: '2025-10-01', 
+                    min: minDate, 
                     position: 'top',
                     grid: { color: '#f0f0f0' },
                     ticks: { font: { size: 11 }, maxRotation: 0, autoSkip: true }
