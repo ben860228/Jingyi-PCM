@@ -57,7 +57,7 @@ window.exportGanttToPDF = async function () {
         // --- Data Clamping Logic (User Request #1) ---
         // Deep copy actual data to avoid mutating global cache
         // Clamp End Date to reportDateObj
-        const { labels, planned, actual, colors, styles } = window.ganttDataCache;
+        const { labels, planned, actual, colors, styles, progressData } = window.ganttDataCache;
 
         const reportTime = reportDateObj.valueOf();
 
@@ -117,6 +117,92 @@ window.exportGanttToPDF = async function () {
         const ctx = tempCanvas.getContext('2d');
         // NOTE: We override 'today' with 'reportDateObj' for the line position
 
+        // ★ PDF 版進度標籤 Plugin（字體更大，適合高解析度 Canvas）
+        const pdfProgressPlugin = {
+            id: 'pdfGanttProgressLabels',
+            afterDatasetsDraw(chart) {
+                if (!progressData || progressData.length === 0) return;
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const xScale = chart.scales.x;
+                const fontSize = 36;
+                const labelPadding = 24;
+
+                ctx.save();
+                progressData.forEach((pd, index) => {
+                    if (!pd) return;
+                    const planned = pd.planned;
+                    const actual  = pd.actual;
+                    const hasPlan = planned !== null && planned !== undefined;
+                    const hasAct  = actual  !== null && actual  !== undefined;
+                    if (!hasPlan && !hasAct) return;
+
+                    // Y 中心
+                    let yCenter = null;
+                    for (let di = 0; di < chart.data.datasets.length; di++) {
+                        const meta = chart.getDatasetMeta(di);
+                        if (meta && meta.data && meta.data[index]) {
+                            yCenter = meta.data[index].y;
+                            break;
+                        }
+                    }
+                    if (yCenter === null) return;
+
+                    // 最右端 X
+                    let rightEdge = chartArea.left;
+                    for (let di = 0; di < chart.data.datasets.length; di++) {
+                        const raw = chart.data.datasets[di].data[index];
+                        if (raw && raw[1]) {
+                            const px = xScale.getPixelForValue(raw[1]);
+                            if (px > rightEdge) rightEdge = px;
+                        }
+                    }
+                    if (rightEdge <= chartArea.left + 5) return;
+
+                    const pStr = hasPlan ? planned.toFixed(0) + '%' : '--';
+                    const aStr = hasAct  ? actual.toFixed(0)  + '%' : '--';
+
+                    let diffSymbol = '';
+                    let diffColor  = '#888888';
+                    if (hasPlan && hasAct) {
+                        const diff = actual - planned;
+                        const absDiff = Math.abs(diff).toFixed(0);
+                        if (diff < -2) {
+                            diffSymbol = ` ▼${absDiff}%`;
+                            diffColor = '#e74c3c';
+                        } else if (diff > 2) {
+                            diffSymbol = ` ▲${absDiff}%`;
+                            diffColor = '#27ae60';
+                        } else {
+                            diffSymbol = ' ✓';
+                            diffColor = '#27ae60';
+                        }
+                        if (colors && colors[index] === '#b8c5ce') diffColor = '#aaaaaa';
+                    }
+
+                    const x = rightEdge + labelPadding;
+                    if (x > chart.canvas.width - labelPadding) return;
+
+                    ctx.font = `bold ${fontSize}px "Microsoft JhengHei", "Arial", sans-serif`;
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'left';
+
+                    if (hasPlan && hasAct) {
+                        const mainText = `預計${pStr} 實際${aStr}`;
+                        ctx.fillStyle = '#333333';
+                        ctx.fillText(mainText, x, yCenter);
+                        const mainWidth = ctx.measureText(mainText).width;
+                        ctx.fillStyle = diffColor;
+                        ctx.fillText(diffSymbol, x + mainWidth, yCenter);
+                    } else {
+                        ctx.fillStyle = '#666666';
+                        ctx.fillText(hasPlan ? `預計${pStr}` : `實際${aStr}`, x, yCenter);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
         const hiResChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -156,7 +242,7 @@ window.exportGanttToPDF = async function () {
                 animation: false,
                 maintainAspectRatio: false,
                 layout: {
-                    padding: 0
+                    padding: { right: 500 }  // ★ 留空間給進度標籤
                 },
                 scales: {
                     x: {
@@ -202,7 +288,9 @@ window.exportGanttToPDF = async function () {
                     }
                 }
             }
-        });
+        },
+        plugins: [pdfProgressPlugin]  // ★ 加入進度標籤 Plugin
+    });
 
         await new Promise(r => setTimeout(r, 100));
         const highResImgData = tempCanvas.toDataURL('image/png', 1.0);
