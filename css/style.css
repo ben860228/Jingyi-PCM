@@ -1442,3 +1442,55 @@ body.catch-up-mode .sub-title,
 body.catch-up-mode .chart-section h3 {
     border-left-color: #e65100;
 }
+
+/* ★★★ 甘特圖圖例列 ★★★ */
+.gantt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #555;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* 進度標籤切換按鈕 */
+#gantt-toggle-progress-btn {
+    margin-left: auto;
+    padding: 3px 10px;
+    font-size: 11px;
+    border: 1px solid #d0d0d0;
+    border-radius: 12px;
+    background: #f7f7f7;
+    color: #555;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, opacity 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+}
+
+#gantt-toggle-progress-btn:hover {
+    background: #e8e8e8;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+@media print {
+    #gantt-toggle-progress-btn {
+        display: none; /* 列印時隱藏按鈕本身 */
+    }
+}

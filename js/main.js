@@ -1,6 +1,16 @@
 import { parsePercent, parseDate } from './utils.js';
-import { renderGantt } from './components/ganttChart.js';
+import { renderGantt, toggleGanttProgressLabels } from './components/ganttChart.js';
 import { renderSCurve } from './components/sCurveChart.js';
+
+// 暴露切換函數給全局使用（HTML 按鈕、pdfExport.js 等）
+window.toggleGanttProgressLabels = function() {
+    const isVisible = toggleGanttProgressLabels();
+    const btn = document.getElementById('gantt-toggle-progress-btn');
+    if (btn) {
+        btn.textContent = isVisible ? '📊 隱藏進度%' : '📊 顯示進度%';
+        btn.style.opacity = isVisible ? '1' : '0.5';
+    }
+};
 
 // ★★★ Dynamic Configuration for different Projects (N13, Yuli, etc.) ★★★
 const config = window.PROJECT_CONFIG || {};

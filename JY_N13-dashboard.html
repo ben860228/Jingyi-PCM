@@ -181,6 +181,13 @@
                         style="background-color: #f39c12;"></span>進行中(落後)</span>
                 <span class="legend-item"><span class="legend-color"
                         style="background-color: #ff0000;"></span>尚未啟動而落後</span>
+                <button id="gantt-toggle-progress-btn"
+                    onclick="window.toggleGanttProgressLabels()"
+                    style="margin-left:auto; padding:3px 10px; font-size:11px; border:1px solid #ccc; border-radius:12px; background:#f7f7f7; color:#555; cursor:pointer; white-space:nowrap; transition:all 0.2s;"
+                    onmouseover="this.style.background='#e8e8e8'"
+                    onmouseout="this.style.background='#f7f7f7'">
+                    📊 隱藏進度%
+                </button>
             </div>
 
             <div class="gantt-container">

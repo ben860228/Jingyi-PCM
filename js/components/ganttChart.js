@@ -1,4 +1,5 @@
 let ganttChartInstance = null;
+let ganttProgressVisible = true; // 控制進度標籤顯示狀態
 
 /**
  * 甘特圖進度標籤 Plugin
@@ -9,16 +10,18 @@ function createProgressLabelPlugin(progressData, colors) {
     return {
         id: 'ganttProgressLabels',
         afterDatasetsDraw(chart) {
+            if (!ganttProgressVisible) return; // 隔藏模式
             if (!progressData || progressData.length === 0) return;
 
             const ctx = chart.ctx;
             const chartArea = chart.chartArea;
             const xScale = chart.scales.x;
 
-            // 根據 canvas 寬度動態決定字體大小（對齊 y 軸工項名稱約 12px）
-            const canvasWidth = chart.canvas.width;
-            const fontSize = canvasWidth > 3000 ? 34 : (canvasWidth > 1500 ? 16 : 10);
-            const labelPadding = canvasWidth > 3000 ? 20 : 6;
+            // 用 offsetWidth（CSS 像素）而非 canvas.width（物理像素），避免 HiDPI 導致字體偏大
+            const cssWidth = chart.canvas.offsetWidth || (chart.canvas.width / (window.devicePixelRatio || 1));
+            // 對齊 y 軸工項名稱字體 12px，標籤用稍小的 10px
+            const fontSize = cssWidth > 1800 ? 14 : (cssWidth > 900 ? 11 : 10);
+            const labelPadding = 6;
 
             ctx.save();
 
@@ -120,6 +123,12 @@ function createProgressLabelPlugin(progressData, colors) {
             ctx.restore();
         }
     };
+}
+
+export function toggleGanttProgressLabels() {
+    ganttProgressVisible = !ganttProgressVisible;
+    if (ganttChartInstance) ganttChartInstance.update('none'); // 'none' 跳過動畫，立即重繪
+    return ganttProgressVisible;
 }
 
 export function renderGantt(labels, plannedData, actualData, actualColors, today, taskStyles, minDate = '2025-10-01', progressData = null) {
