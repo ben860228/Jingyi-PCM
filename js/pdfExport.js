@@ -18,6 +18,13 @@ window.exportGanttToPDF = async function () {
 
         const { jsPDF } = window.jspdf;
 
+        // ★ 詢問是否在 PDF 中顯示進度標籤
+        const showProgressLabels = window.confirm(
+            '📊 是否在甘特圖中顯示「預計%／實際%」進度標籤？\n\n' +
+            '選 確定：顯示各工項預計與實際進度\n' +
+            '選 取消：僅顯示甘特圖長條（原視覺）'
+        );
+
         // 2. Fetch Project Info
         let pName = document.getElementById('ui-project-name') ? document.getElementById('ui-project-name').textContent : "Project";
 
@@ -57,7 +64,7 @@ window.exportGanttToPDF = async function () {
         // --- Data Clamping Logic (User Request #1) ---
         // Deep copy actual data to avoid mutating global cache
         // Clamp End Date to reportDateObj
-        const { labels, planned, actual, colors, styles } = window.ganttDataCache;
+        const { labels, planned, actual, colors, styles, progressData } = window.ganttDataCache;
 
         const reportTime = reportDateObj.valueOf();
 
@@ -117,6 +124,95 @@ window.exportGanttToPDF = async function () {
         const ctx = tempCanvas.getContext('2d');
         // NOTE: We override 'today' with 'reportDateObj' for the line position
 
+        // ★ PDF 版進度標籤 Plugin（字體更大，適合高解析度 Canvas）
+        const pdfProgressPlugin = {
+            id: 'pdfGanttProgressLabels',
+            afterDatasetsDraw(chart) {
+                if (!effectiveProgressData || effectiveProgressData.length === 0) return;
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const xScale = chart.scales.x;
+                const fontSize = 36;
+                const labelPadding = 24;
+
+                ctx.save();
+                effectiveProgressData.forEach((pd, index) => {
+                    if (!pd) return;
+                    const planned = pd.planned;
+                    const actual  = pd.actual;
+                    const hasPlan = planned !== null && planned !== undefined;
+                    const hasAct  = actual  !== null && actual  !== undefined;
+                    if (!hasPlan && !hasAct) return;
+
+                    // Y 中心
+                    let yCenter = null;
+                    for (let di = 0; di < chart.data.datasets.length; di++) {
+                        const meta = chart.getDatasetMeta(di);
+                        if (meta && meta.data && meta.data[index]) {
+                            yCenter = meta.data[index].y;
+                            break;
+                        }
+                    }
+                    if (yCenter === null) return;
+
+                    // 最右端 X
+                    let rightEdge = chartArea.left;
+                    for (let di = 0; di < chart.data.datasets.length; di++) {
+                        const raw = chart.data.datasets[di].data[index];
+                        if (raw && raw[1]) {
+                            const px = xScale.getPixelForValue(raw[1]);
+                            if (px > rightEdge) rightEdge = px;
+                        }
+                    }
+                    if (rightEdge <= chartArea.left + 5) return;
+
+                    const pStr = hasPlan ? planned.toFixed(0) + '%' : '--';
+                    const aStr = hasAct  ? actual.toFixed(0)  + '%' : '--';
+
+                    let diffSymbol = '';
+                    let diffColor  = '#888888';
+                    if (hasPlan && hasAct) {
+                        const diff = actual - planned;
+                        const absDiff = Math.abs(diff).toFixed(0);
+                        if (diff <= -1) {
+                            diffSymbol = ` ▼${absDiff}%`;
+                            diffColor = '#e74c3c';
+                        } else if (diff >= 1) {
+                            diffSymbol = ` ▲${absDiff}%`;
+                            diffColor = '#27ae60';
+                        } else {
+                            diffSymbol = ' ✓';
+                            diffColor = '#27ae60';
+                        }
+                        if (colors && colors[index] === '#b8c5ce') diffColor = '#aaaaaa';
+                    }
+
+                    const x = rightEdge + labelPadding;
+                    if (x > chart.canvas.width - labelPadding) return;
+
+                    ctx.font = `bold ${fontSize}px "Microsoft JhengHei", "Arial", sans-serif`;
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'left';
+
+                    if (hasPlan && hasAct) {
+                        const mainText = `預計${pStr} 實際${aStr}`;
+                        ctx.fillStyle = '#333333';
+                        ctx.fillText(mainText, x, yCenter);
+                        const mainWidth = ctx.measureText(mainText).width;
+                        ctx.fillStyle = diffColor;
+                        ctx.fillText(diffSymbol, x + mainWidth, yCenter);
+                    } else {
+                        ctx.fillStyle = '#666666';
+                        ctx.fillText(hasPlan ? `預計${pStr}` : `實際${aStr}`, x, yCenter);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        // 如果使用者選擇「取消」，則傳入 null 跳過標籤繪製
+        const effectiveProgressData = showProgressLabels ? progressData : null;
+
         const hiResChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -156,7 +252,7 @@ window.exportGanttToPDF = async function () {
                 animation: false,
                 maintainAspectRatio: false,
                 layout: {
-                    padding: 0
+                    padding: { right: 500 }  // ★ 留空間給進度標籤
                 },
                 scales: {
                     x: {
@@ -201,7 +297,8 @@ window.exportGanttToPDF = async function () {
                         }
                     }
                 }
-            }
+            },
+            plugins: [pdfProgressPlugin]  // ★ 進度標籤 Plugin（與 data/options 同層）
         });
 
         await new Promise(r => setTimeout(r, 100));

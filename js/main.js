@@ -1,6 +1,16 @@
 import { parsePercent, parseDate } from './utils.js';
-import { renderGantt } from './components/ganttChart.js';
+import { renderGantt, toggleGanttProgressLabels } from './components/ganttChart.js';
 import { renderSCurve } from './components/sCurveChart.js';
+
+// 暴露切換函數給全局使用（HTML 按鈕、pdfExport.js 等）
+window.toggleGanttProgressLabels = function() {
+    const isVisible = toggleGanttProgressLabels();
+    const btn = document.getElementById('gantt-toggle-progress-btn');
+    if (btn) {
+        btn.textContent = isVisible ? '📊 隱藏進度%' : '📊 顯示進度%';
+        btn.style.opacity = isVisible ? '1' : '0.5';
+    }
+};
 
 // ★★★ Dynamic Configuration for different Projects (N13, Yuli, etc.) ★★★
 const config = window.PROJECT_CONFIG || {};
@@ -371,7 +381,7 @@ function processData(taskCsv, infoCsv) {
     let totalPlannedToday = 0;
     let totalActualToday = 0;
 
-    const ganttLabels = []; const ganttPlannedData = []; const ganttActualRaw = []; const ganttTaskStyles = [];
+    const ganttLabels = []; const ganttPlannedData = []; const ganttActualRaw = []; const ganttTaskStyles = []; const ganttProgressData = [];
     const categories = ['行政', '設計', '施工'];
     const ongoingTasks = { '行政': [], '設計': [], '施工': [] };
     const allUpcomingTasks = [];
@@ -403,6 +413,24 @@ function processData(taskCsv, infoCsv) {
         // 實際進度備案計算
         const currentTaskProgress = taskProgressState[index] || 0;
         totalActualToday += (currentTaskProgress / 100 * weight);
+
+        // ★ 計算甘特圖標籤用的個別工項進度百分比 ★
+        // 預計進度：依今日時間在 [planStart, planEnd] 區間的線性插值
+        let taskPlannedPct = null;
+        if (planStart && planEnd) {
+            if (today >= planEnd) {
+                taskPlannedPct = 100;
+            } else if (today > planStart) {
+                const totalDays = (planEnd - planStart) / 86400000;
+                const passedDays = (today - planStart) / 86400000;
+                taskPlannedPct = totalDays > 0 ? Math.min(100, (passedDays / totalDays) * 100) : 0;
+            } else {
+                taskPlannedPct = 0;
+            }
+        }
+        // 實際進度：從 taskProgressState 取最新回報值（0~100）
+        const taskActualPct = currentTaskProgress > 0 ? currentTaskProgress : (actEnd ? 100 : null);
+        ganttProgressData.push({ planned: taskPlannedPct, actual: taskActualPct });
 
         // 甘特圖資料準備
         ganttLabels.push(taskName);
@@ -521,7 +549,7 @@ function processData(taskCsv, infoCsv) {
     }
 
     if (sLabels.length > 0) renderSCurve(sLabels, sPlanned, sActual, today);
-    renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles, ganttMinDate);
+    renderGantt(ganttLabels, ganttPlannedData, finalActualData, finalActualColors, today, ganttTaskStyles, ganttMinDate, ganttProgressData);
 
     // Cache Data for PDF Export
     window.ganttDataCache = {
@@ -531,7 +559,8 @@ function processData(taskCsv, infoCsv) {
         colors: finalActualColors,
         today: today,
         styles: ganttTaskStyles,
-        minDate: ganttMinDate
+        minDate: ganttMinDate,
+        progressData: ganttProgressData  // ★ 新增：傳給 PDF 匯出用
     };
 
     attachTaskCardEvents();
