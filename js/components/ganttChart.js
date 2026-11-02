@@ -15,10 +15,10 @@ function createProgressLabelPlugin(progressData, colors) {
             const chartArea = chart.chartArea;
             const xScale = chart.scales.x;
 
-            // 根據 canvas 寬度動態決定字體大小
+            // 根據 canvas 寬度動態決定字體大小（對齊 y 軸工項名稱約 12px）
             const canvasWidth = chart.canvas.width;
-            const fontSize = canvasWidth > 3000 ? 36 : (canvasWidth > 1500 ? 18 : 11);
-            const labelPadding = canvasWidth > 3000 ? 20 : 8;
+            const fontSize = canvasWidth > 3000 ? 34 : (canvasWidth > 1500 ? 16 : 10);
+            const labelPadding = canvasWidth > 3000 ? 20 : 6;
 
             ctx.save();
 
@@ -69,15 +69,15 @@ function createProgressLabelPlugin(progressData, colors) {
                 if (hasPlan && hasAct) {
                     const diff = actual - planned;
                     const absDiff = Math.abs(diff).toFixed(0);
-                    if (diff < -2) {
+                    if (diff <= -1) {
                         diffSymbol = ` ▼${absDiff}%`;
                         diffColor  = '#e74c3c';  // 落後：紅
-                    } else if (diff > 2) {
+                    } else if (diff >= 1) {
                         diffSymbol = ` ▲${absDiff}%`;
                         diffColor  = '#27ae60';  // 超前：綠
                     } else {
                         diffSymbol = ' ✓';
-                        diffColor  = '#27ae60';  // 符合：綠
+                        diffColor  = '#27ae60';  // 符合（差距<1%）：綠
                     }
                     // 已完成的工項（條的顏色為 #b8c5ce）用灰色顯示
                     if (colors && colors[index] === '#b8c5ce') {

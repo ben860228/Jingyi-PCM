@@ -18,6 +18,13 @@ window.exportGanttToPDF = async function () {
 
         const { jsPDF } = window.jspdf;
 
+        // ★ 詢問是否在 PDF 中顯示進度標籤
+        const showProgressLabels = window.confirm(
+            '📊 是否在甘特圖中顯示「預計%／實際%」進度標籤？\n\n' +
+            '選 確定：顯示各工項預計與實際進度\n' +
+            '選 取消：僅顯示甘特圖長條（原視覺）'
+        );
+
         // 2. Fetch Project Info
         let pName = document.getElementById('ui-project-name') ? document.getElementById('ui-project-name').textContent : "Project";
 
@@ -121,7 +128,7 @@ window.exportGanttToPDF = async function () {
         const pdfProgressPlugin = {
             id: 'pdfGanttProgressLabels',
             afterDatasetsDraw(chart) {
-                if (!progressData || progressData.length === 0) return;
+                if (!effectiveProgressData || effectiveProgressData.length === 0) return;
                 const ctx = chart.ctx;
                 const chartArea = chart.chartArea;
                 const xScale = chart.scales.x;
@@ -129,7 +136,7 @@ window.exportGanttToPDF = async function () {
                 const labelPadding = 24;
 
                 ctx.save();
-                progressData.forEach((pd, index) => {
+                effectiveProgressData.forEach((pd, index) => {
                     if (!pd) return;
                     const planned = pd.planned;
                     const actual  = pd.actual;
@@ -167,10 +174,10 @@ window.exportGanttToPDF = async function () {
                     if (hasPlan && hasAct) {
                         const diff = actual - planned;
                         const absDiff = Math.abs(diff).toFixed(0);
-                        if (diff < -2) {
+                        if (diff <= -1) {
                             diffSymbol = ` ▼${absDiff}%`;
                             diffColor = '#e74c3c';
-                        } else if (diff > 2) {
+                        } else if (diff >= 1) {
                             diffSymbol = ` ▲${absDiff}%`;
                             diffColor = '#27ae60';
                         } else {
@@ -202,6 +209,9 @@ window.exportGanttToPDF = async function () {
                 ctx.restore();
             }
         };
+
+        // 如果使用者選擇「取消」，則傳入 null 跳過標籤繪製
+        const effectiveProgressData = showProgressLabels ? progressData : null;
 
         const hiResChart = new Chart(ctx, {
             type: 'bar',
@@ -287,10 +297,9 @@ window.exportGanttToPDF = async function () {
                         }
                     }
                 }
-            }
-        },
-        plugins: [pdfProgressPlugin]  // ★ 加入進度標籤 Plugin
-    });
+            },
+            plugins: [pdfProgressPlugin]  // ★ 進度標籤 Plugin（與 data/options 同層）
+        });
 
         await new Promise(r => setTimeout(r, 100));
         const highResImgData = tempCanvas.toDataURL('image/png', 1.0);
